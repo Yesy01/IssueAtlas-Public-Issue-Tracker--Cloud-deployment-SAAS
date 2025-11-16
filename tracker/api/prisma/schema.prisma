@@ -1,0 +1,53 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum IssueStatus {
+  new
+  triaged
+  in_progress
+  resolved
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(user)
+  createdAt DateTime @default(now())
+  issues    Issue[]
+}
+
+model Issue {
+  id          String          @id @default(cuid())
+  reporterId  String
+  reporter    User            @relation(fields: [reporterId], references: [id])
+  title       String
+  description String
+  status      IssueStatus     @default(new)
+  lat         Float
+  lon         Float
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  history     StatusHistory[]
+}
+
+model StatusHistory {
+  id        String       @id @default(cuid())
+  issue     Issue        @relation(fields: [issueId], references: [id])
+  issueId   String
+  oldStatus IssueStatus?
+  newStatus IssueStatus
+  changedBy String
+  changedAt DateTime     @default(now())
+}
