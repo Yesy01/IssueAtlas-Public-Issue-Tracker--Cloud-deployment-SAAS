@@ -20,6 +20,11 @@ export const IssueCreateSchema = z.object({
   areaName: z.string().max(255).optional(),
   imageUrl: z.string().url().optional(),
 });
+export const IssueStatusUpdateSchema = z.object({
+  newStatus: z.enum(["new", "triaged", "in_progress", "resolved"]),
+});
+
+export type IssueStatusUpdateInput = z.infer<typeof IssueStatusUpdateSchema>;
 
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type LoginInput = z.infer<typeof LoginSchema>;
