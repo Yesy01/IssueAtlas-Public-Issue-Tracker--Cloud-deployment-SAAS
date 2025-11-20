@@ -25,6 +25,11 @@ export const IssueStatusUpdateSchema = z.object({
 });
 
 export type IssueStatusUpdateInput = z.infer<typeof IssueStatusUpdateSchema>;
+export const CommentCreateSchema = z.object({
+  body: z.string().min(3, "Comment is too short").max(1000, "Comment is too long"),
+});
+
+export type CommentCreateInput = z.infer<typeof CommentCreateSchema>;
 
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type LoginInput = z.infer<typeof LoginSchema>;

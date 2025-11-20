@@ -223,4 +223,126 @@ router.patch(
   }
 );
 
+
+/**
+ * POST /api/issues/:id/upvote
+ * Auth required
+ * Idempotent: multiple calls from same user don't increase count
+ */
+router.post("/:id/upvote", authGuard, async (req: Request, res: Response) => {
+  const { id: issueId } = req.params;
+
+  if (!req.user) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  try {
+    // Ensure issue exists for nice 404s
+    const issue = await prisma.issue.findUnique({ where: { id: issueId } });
+    if (!issue) {
+      return res.status(404).json({ error: "Issue not found" });
+    }
+
+    // Idempotent upvote based on composite PK (issueId, userId)
+    await prisma.issueUpvote.upsert({
+      where: {
+        issueId_userId: {
+          issueId,
+          userId: req.user.id,
+        },
+      },
+      update: {}, // do nothing if exists
+      create: {
+        issueId,
+        userId: req.user.id,
+      },
+    });
+
+    const upvoteCount = await prisma.issueUpvote.count({
+      where: { issueId },
+    });
+
+    return res.json({
+      success: true,
+      issueId,
+      upvoteCount,
+    });
+  } catch (err) {
+    console.error("[POST /api/issues/:id/upvote] error:", err);
+    return res.status(500).json({ error: "Failed to upvote issue" });
+  }
+});
+
+import { CommentCreateSchema } from "../lib/validation"; // if not imported yet
+
+/**
+ * POST /api/issues/:id/comments
+ * Auth required
+ */
+router.post("/:id/comments", authGuard, async (req: Request, res: Response) => {
+  const { id: issueId } = req.params;
+
+  if (!req.user) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  const parsed = CommentCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Invalid request body",
+      details: parsed.error.flatten(),
+    });
+  }
+
+  try {
+    const issue = await prisma.issue.findUnique({ where: { id: issueId } });
+    if (!issue) {
+      return res.status(404).json({ error: "Issue not found" });
+    }
+
+    const comment = await prisma.comment.create({
+      data: {
+        issueId,
+        userId: req.user.id,
+        body: parsed.data.body,
+      },
+      include: {
+        user: {
+          select: { id: true, email: true, role: true },
+        },
+      },
+    });
+
+    return res.status(201).json({ comment });
+  } catch (err) {
+    console.error("[POST /api/issues/:id/comments] error:", err);
+    return res.status(500).json({ error: "Failed to create comment" });
+  }
+});
+
+/**
+ * GET /api/issues/:id/comments
+ * Public: list comments for an issue
+ */
+router.get("/:id/comments", async (req: Request, res: Response) => {
+  const { id: issueId } = req.params;
+
+  try {
+    const comments = await prisma.comment.findMany({
+      where: { issueId },
+      orderBy: { createdAt: "asc" },
+      include: {
+        user: {
+          select: { id: true, email: true, role: true },
+        },
+      },
+    });
+
+    return res.json({ items: comments, count: comments.length });
+  } catch (err) {
+    console.error("[GET /api/issues/:id/comments] error:", err);
+    return res.status(500).json({ error: "Failed to list comments" });
+  }
+});
+
 export default router;

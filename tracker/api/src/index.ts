@@ -6,6 +6,7 @@ import authRouter from "./routes/auth";
 import issuesRouter from "./routes/issues";
 import { errorHandler } from "./middleware/error";
 
+
 const app = express();
 const PORT = process.env.PORT || 8080;
 
