@@ -18,29 +18,77 @@ enum IssueStatus {
   in_progress
   resolved
 }
+enum IssueType {
+  pothole
+  streetlight
+  drainage
+  other
+}
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String        @id @default(cuid())
+  email     String        @unique
   password  String
-  role      Role     @default(user)
-  createdAt DateTime @default(now())
+  role      Role          @default(user)
+  createdAt DateTime      @default(now())
   issues    Issue[]
+  comments  Comment[]
+  upvotes   IssueUpvote[]
 }
+
+
 
 model Issue {
   id          String          @id @default(cuid())
   reporterId  String
   reporter    User            @relation(fields: [reporterId], references: [id])
+
   title       String
   description String
+
   status      IssueStatus     @default(new)
+  type        IssueType
+
   lat         Float
   lon         Float
+
+  imageUrl    String?
+  address     String?
+  areaName    String?
+
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+
   history     StatusHistory[]
+  comments    Comment[]
+  upvotes     IssueUpvote[]
 }
+
+model Comment {
+  id        String   @id @default(cuid())
+
+  issueId   String
+  issue     Issue    @relation(fields: [issueId], references: [id])
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  body      String
+  createdAt DateTime @default(now())
+}
+
+model IssueUpvote {
+  issueId   String
+  issue     Issue   @relation(fields: [issueId], references: [id])
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@id([issueId, userId])
+}
+
 
 model StatusHistory {
   id        String       @id @default(cuid())
