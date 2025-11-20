@@ -1,0 +1,26 @@
+import { z } from "zod";
+
+export const RegisterSchema = z.object({
+  email: z.string().email().min(3).max(255),
+  password: z.string().min(8).max(128),
+});
+
+export const LoginSchema = z.object({
+  email: z.string().email().min(3).max(255),
+  password: z.string().min(1).max(128),
+});
+
+export const IssueCreateSchema = z.object({
+  title: z.string().min(3).max(120),
+  description: z.string().min(10).max(3000),
+  type: z.enum(["pothole", "streetlight", "drainage", "other"]),
+  lat: z.number().min(-90).max(90),
+  lon: z.number().min(-180).max(180),
+  address: z.string().max(255).optional(),
+  areaName: z.string().max(255).optional(),
+  imageUrl: z.string().url().optional(),
+});
+
+export type RegisterInput = z.infer<typeof RegisterSchema>;
+export type LoginInput = z.infer<typeof LoginSchema>;
+export type IssueCreateInput = z.infer<typeof IssueCreateSchema>;
