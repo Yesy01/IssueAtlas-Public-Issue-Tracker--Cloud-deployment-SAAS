@@ -5,6 +5,8 @@ import morgan from "morgan";
 import authRouter from "./routes/auth";
 import issuesRouter from "./routes/issues";
 import { errorHandler } from "./middleware/error";
+import uploadsRoutes from "./routes/uploads";
+
 
 
 const app = express();
@@ -22,6 +24,8 @@ app.get("/health", (_req, res) => {
 // API routes
 app.use("/api/auth", authRouter);
 app.use("/api/issues", issuesRouter);
+app.use("/api/uploads", uploadsRoutes);
+
 
 // 404 handler (for API only)
 app.use((req, res) => {
