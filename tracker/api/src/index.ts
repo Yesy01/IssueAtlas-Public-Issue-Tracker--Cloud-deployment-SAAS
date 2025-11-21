@@ -6,6 +6,7 @@ import authRouter from "./routes/auth";
 import issuesRouter from "./routes/issues";
 import { errorHandler } from "./middleware/error";
 import uploadsRoutes from "./routes/uploads";
+import { prisma } from './lib/prisma';
 
 
 
@@ -20,6 +21,18 @@ app.use(morgan("dev"));
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
+
+app.get('/api/health/db', async (req, res) => {
+  try {
+    // Minimal DB probe
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', db: 'up' });
+  } catch (err) {
+    console.error('[health/db] DB check failed:', err);
+    res.status(500).json({ status: 'error', db: 'down' });
+  }
+});
+
 
 // API routes
 app.use("/api/auth", authRouter);
