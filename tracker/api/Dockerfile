@@ -1,17 +1,18 @@
-FROM node:20-alpine AS deps
+FROM node:20-alpine
+
 WORKDIR /app
+
+# Install deps
 COPY package*.json ./
 RUN npm ci
 
-FROM deps AS build
-COPY . .
-# Build TypeScript -> this will fail later if TS is broken, which is what you want
-RUN npm run build || true
+# Copy Prisma schema and generate client
+COPY prisma ./prisma
+RUN npx prisma generate
 
-FROM node:20-alpine
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy the rest of the source
 COPY . .
-ENV PORT=8080
+
 EXPOSE 8080
-CMD ["npm","run","dev"]
+
+CMD ["npm", "run", "dev"]
