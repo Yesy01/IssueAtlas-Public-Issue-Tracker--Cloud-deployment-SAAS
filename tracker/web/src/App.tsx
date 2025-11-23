@@ -1,35 +1,99 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { api } from "./lib/api";
+import { clearToken, getToken } from "./lib/auth";
+import type { User } from "./types";
+import { AuthPage } from "./pages/AuthPage";
+import { MapPage } from "./pages/MapPage";
+import { ReportPage } from "./pages/ReportPage";
+import { AdminPage } from "./pages/AdminPage";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const location = useLocation();
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    api
+      .get<{ user: User }>("/auth/me")
+      .then((res) => setUser(res.data.user))
+      .catch(() => {
+        clearToken();
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div style={{ padding: "1rem" }}>Loading...</div>;
+  }
+
+  const handleLogout = () => {
+    clearToken();
+    setUser(null);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div>
+      <header
+        style={{
+          padding: "0.75rem 1rem",
+          borderBottom: "1px solid #ddd",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <nav style={{ display: "flex", gap: "1rem" }}>
+          <Link to="/">Map</Link>
+          <Link to="/report">Report</Link>
+          <Link to="/admin">Admin</Link>
+        </nav>
+        <div>
+          {user ? (
+            <span style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <span>
+                {user.email} ({user.role})
+              </span>
+              <button onClick={handleLogout}>Logout</button>
+            </span>
+          ) : (
+            location.pathname !== "/auth" && <Link to="/auth">Login / Register</Link>
+          )}
+        </div>
+      </header>
 
-export default App
+      <main style={{ padding: "1rem" }}>
+        <Routes>
+          <Route path="/" element={<MapPage user={user} />} />
+          <Route path="/auth" element={<AuthPage onAuth={setUser} />} />
+          <Route
+            path="/report"
+            element={
+              user ? (
+                <ReportPage user={user} />
+              ) : (
+                <Navigate to="/auth" replace state={{ from: "/report" }} />
+              )
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              user?.role === "admin" ? (
+                <AdminPage user={user} />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+        </Routes>
+      </main>
+    </div>
+  );
+}

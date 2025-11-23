@@ -51,7 +51,7 @@ export async function uploadIssueFile(
     ext = original.substring(lastDot + 1).toLowerCase();
   }
 
-  const blobName = `issues/${year}/${month}/${issueId}/${randomUUID()}.${ext}`;
+  const blobName = `${year}/${month}/${issueId}/${randomUUID()}.${ext}`;
 
   const service = getBlobServiceClient();
   const containerClient = service.getContainerClient(containerName);
