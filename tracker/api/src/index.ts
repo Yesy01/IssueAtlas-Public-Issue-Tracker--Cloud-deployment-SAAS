@@ -7,6 +7,7 @@ import issuesRouter from "./routes/issues";
 import { errorHandler } from "./middleware/error";
 import uploadsRoutes from "./routes/uploads";
 import { prisma } from './lib/prisma';
+import healthRouter from "./routes/health";
 
 
 
@@ -38,6 +39,7 @@ app.get('/api/health/db', async (req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/issues", issuesRouter);
 app.use("/api/uploads", uploadsRoutes);
+app.use("/api/health", healthRouter);
 
 
 // 404 handler (for API only)
