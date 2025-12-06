@@ -1,0 +1,71 @@
+/* src/components/UpvoteButton.css */
+.upvote-container {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.upvote-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 20px;
+  background-color: #f7fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.upvote-btn:hover:not(:disabled) {
+  border-color: #646cff;
+  background-color: #eef2ff;
+}
+
+.upvote-btn.voted {
+  border-color: #646cff;
+  background-color: #646cff;
+  color: white;
+}
+
+.upvote-btn.loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.upvote-btn:disabled {
+  cursor: not-allowed;
+}
+
+.upvote-icon {
+  font-size: 1.1rem;
+}
+
+.upvote-count {
+  font-weight: 600;
+}
+
+.upvote-error {
+  font-size: 0.75rem;
+  color: #e53e3e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .upvote-btn {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+
+  .upvote-btn:hover:not(:disabled) {
+    background-color: #4a5568;
+    border-color: #646cff;
+  }
+
+  .upvote-btn.voted {
+    background-color: #646cff;
+    border-color: #646cff;
+  }
+}
