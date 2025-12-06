@@ -1,9 +1,11 @@
 // src/pages/MapPage.tsx
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import L, { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../lib/api";
 import type { Issue, IssueStatus, IssueType, User } from "../types";
+import { STATUS_COLORS, STATUS_LABELS } from "../components/StatusBadge";
 
 interface MapPageProps {
   user: User | null;
@@ -63,7 +65,7 @@ export function MapPage({ user }: MapPageProps) {
     group.clearLayers();
 
     issues.forEach((issue) => {
-      const color = statusColor(issue.status);
+      const color = STATUS_COLORS[issue.status];
       const marker = L.circleMarker([issue.lat, issue.lon], {
         radius: 6,
         color,
@@ -71,9 +73,10 @@ export function MapPage({ user }: MapPageProps) {
         fillOpacity: 0.8,
       }).bindPopup(
         `<strong>${issue.title}</strong><br/>
-        Status: ${issue.status}<br/>
+        Status: ${STATUS_LABELS[issue.status]}<br/>
         Type: ${issue.type}<br/>
-        ${issue.areaName ?? ""}`
+        ${issue.areaName ? `Area: ${issue.areaName}<br/>` : ""}
+        <a href="/issues/${issue.id}" style="color: #646cff;">View Details →</a>`
       );
       marker.addTo(group);
     });
@@ -134,9 +137,21 @@ export function MapPage({ user }: MapPageProps) {
                 borderBottom: "1px solid #eee",
               }}
             >
-              <strong>{issue.title}</strong> ({issue.type})<br />
-              <span>Status: {issue.status}</span>
-              {issue.areaName && <div>Area: {issue.areaName}</div>}
+              <Link to={`/issues/${issue.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                <strong>{issue.title}</strong> ({issue.type})<br />
+                <span style={{ 
+                  display: "inline-block",
+                  padding: "0.1rem 0.4rem",
+                  borderRadius: "4px",
+                  backgroundColor: STATUS_COLORS[issue.status],
+                  color: issue.status === "new" || issue.status === "in_progress" ? "#000" : "#fff",
+                  fontSize: "0.8rem",
+                  marginTop: "0.25rem"
+                }}>
+                  {STATUS_LABELS[issue.status]}
+                </span>
+                {issue.areaName && <div>Area: {issue.areaName}</div>}
+              </Link>
               {issue.imageUrl && (
                 <div>
                   <a href={issue.imageUrl} target="_blank" rel="noreferrer">
@@ -152,19 +167,4 @@ export function MapPage({ user }: MapPageProps) {
       </div>
     </div>
   );
-}
-
-function statusColor(status: IssueStatus): string {
-  switch (status) {
-    case "new":
-      return "red";
-    case "triaged":
-      return "orange";
-    case "in_progress":
-      return "blue";
-    case "resolved":
-      return "green";
-    default:
-      return "gray";
-  }
 }
