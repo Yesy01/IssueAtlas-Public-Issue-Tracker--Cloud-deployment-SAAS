@@ -4,10 +4,13 @@ import morgan from "morgan";
 
 import authRouter from "./routes/auth";
 import issuesRouter from "./routes/issues";
+import analyticsRouter from "./routes/analytics";
+import notificationsRouter from "./routes/notifications";
 import { errorHandler } from "./middleware/error";
 import uploadsRoutes from "./routes/uploads";
 import { prisma } from './lib/prisma';
 import healthRouter from "./routes/health";
+import { generalLimiter, authLimiter, uploadLimiter } from "./middleware/rateLimit";
 
 
 
@@ -17,6 +20,9 @@ const PORT = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
+
+// Apply general rate limiting to all API routes
+app.use("/api", generalLimiter);
 
 // Health check
 app.get("/health", (_req, res) => {
@@ -36,10 +42,12 @@ app.get('/api/health/db', async (req, res) => {
 
 
 // API routes
-app.use("/api/auth", authRouter);
+app.use("/api/auth", authLimiter, authRouter);
 app.use("/api/issues", issuesRouter);
-app.use("/api/uploads", uploadsRoutes);
+app.use("/api/uploads", uploadLimiter, uploadsRoutes);
 app.use("/api/health", healthRouter);
+app.use("/api/analytics", analyticsRouter);
+app.use("/api/notifications", notificationsRouter);
 
 
 // 404 handler (for API only)
