@@ -1,0 +1,93 @@
+// src/middleware/rateLimit.ts
+import { Request, Response, NextFunction } from "express";
+
+// Simple in-memory rate limiter
+// For production, use Redis-backed solution like express-rate-limit with redis store
+
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+}
+
+const rateLimitStore = new Map<string, RateLimitEntry>();
+
+// Cleanup old entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitStore.entries()) {
+    if (now > entry.resetTime) {
+      rateLimitStore.delete(key);
+    }
+  }
+}, 60000); // Cleanup every minute
+
+interface RateLimitOptions {
+  windowMs: number; // Time window in milliseconds
+  max: number; // Max requests per window
+  message?: string;
+  keyGenerator?: (req: Request) => string;
+}
+
+export function createRateLimiter(options: RateLimitOptions) {
+  const {
+    windowMs,
+    max,
+    message = "Too many requests, please try again later",
+    keyGenerator = (req: Request) => req.ip || "unknown",
+  } = options;
+
+  return (req: Request, res: Response, next: NextFunction) => {
+    const key = keyGenerator(req);
+    const now = Date.now();
+
+    let entry = rateLimitStore.get(key);
+
+    if (!entry || now > entry.resetTime) {
+      // Create new window
+      entry = {
+        count: 1,
+        resetTime: now + windowMs,
+      };
+      rateLimitStore.set(key, entry);
+    } else {
+      entry.count++;
+    }
+
+    // Set rate limit headers
+    res.setHeader("X-RateLimit-Limit", max);
+    res.setHeader("X-RateLimit-Remaining", Math.max(0, max - entry.count));
+    res.setHeader("X-RateLimit-Reset", Math.ceil(entry.resetTime / 1000));
+
+    if (entry.count > max) {
+      res.setHeader("Retry-After", Math.ceil((entry.resetTime - now) / 1000));
+      return res.status(429).json({ error: message });
+    }
+
+    next();
+  };
+}
+
+// Pre-configured limiters
+export const generalLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per 15 minutes
+  message: "Too many requests, please try again later",
+});
+
+export const authLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 auth attempts per 15 minutes
+  message: "Too many authentication attempts, please try again later",
+});
+
+export const uploadLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20, // 20 uploads per hour
+  message: "Upload limit exceeded, please try again later",
+});
+
+export const strictLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 requests per minute
+  message: "Too many requests, please slow down",
+});
