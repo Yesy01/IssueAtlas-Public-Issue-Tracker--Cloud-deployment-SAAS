@@ -13,6 +13,8 @@ import { prisma } from './lib/prisma';
 import healthRouter from "./routes/health";
 import { generalLimiter, authLimiter, uploadLimiter } from "./middleware/rateLimit";
 import { xssProtection, cspHeaders } from "./middleware/security";
+import { logger, morganStream } from "./lib/logger";
+import { requestLogger } from "./middleware/requestLogger";
 
 
 
@@ -31,9 +33,36 @@ app.use(cspHeaders);
 // XSS protection middleware
 app.use(xssProtection);
 
-app.use(cors());
+// CORS configuration
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://localhost:3000']; // Default for development
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
-app.use(morgan("dev"));
+
+// Request logging
+if (process.env.NODE_ENV === 'production') {
+  app.use(morgan('combined', { stream: morganStream }));
+} else {
+  app.use(morgan('dev'));
+}
+app.use(requestLogger);
 
 // Apply general rate limiting to all API routes
 app.use("/api", generalLimiter);
@@ -77,5 +106,8 @@ app.use(errorHandler);
 
 
 app.listen(PORT, () => {
-  console.log(`API listening on port ${PORT}`);
+  logger.info(`API server started on port ${PORT}`, {
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT
+  });
 });
