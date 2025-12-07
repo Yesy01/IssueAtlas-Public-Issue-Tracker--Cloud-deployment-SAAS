@@ -22,6 +22,7 @@ export function ReportPage({ user }: ReportPageProps) {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
 
   const mapRef = useRef<LeafletMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -187,6 +188,67 @@ export function ReportPage({ user }: ReportPageProps) {
     }
   };
 
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setGettingLocation(true);
+    setError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLat(latitude);
+        setLon(longitude);
+
+        if (mapRef.current) {
+          const latlng = L.latLng(latitude, longitude);
+          
+          // Update or create marker
+          if (markerRef.current) {
+            markerRef.current.setLatLng(latlng);
+          } else {
+            markerRef.current = L.marker(latlng).addTo(mapRef.current);
+          }
+
+          // Center map on user location with appropriate zoom
+          mapRef.current.setView(latlng, 15);
+        }
+
+        setGettingLocation(false);
+        setMessage("Location detected successfully! You can adjust by clicking on the map.");
+        setTimeout(() => setMessage(null), 5000);
+      },
+      (error) => {
+        setGettingLocation(false);
+        let errorMessage = "Unable to retrieve your location. ";
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage += "Please enable location permissions in your browser settings.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage += "Location information is unavailable.";
+            break;
+          case error.TIMEOUT:
+            errorMessage += "Location request timed out.";
+            break;
+          default:
+            errorMessage += "An unknown error occurred.";
+        }
+        
+        setError(errorMessage);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
+
   return (
     <div className="report-page">
       <header className="report-header">
@@ -199,20 +261,6 @@ export function ReportPage({ user }: ReportPageProps) {
       <div className="report-content">
         <div className="report-form-section">
           <div className="report-form-card">
-            {error && (
-              <div className="form-message error">
-                <span className="form-message-icon">⚠️</span>
-                <span>{error}</span>
-              </div>
-            )}
-
-            {message && (
-              <div className="form-message success">
-                <span className="form-message-icon">✓</span>
-                <span>{message}</span>
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="report-form">
               <div>
                 <h3 className="form-section-title">
@@ -303,8 +351,40 @@ export function ReportPage({ user }: ReportPageProps) {
                       ? `${lat.toFixed(6)}, ${lon.toFixed(6)}`
                       : "Not selected"}
                   </div>
+                  <button
+                    type="button"
+                    onClick={useCurrentLocation}
+                    disabled={gettingLocation}
+                    className="use-location-btn"
+                  >
+                    {gettingLocation ? (
+                      <>
+                        <span className="location-spinner"></span>
+                        Getting location...
+                      </>
+                    ) : (
+                      <>
+                        📍 Use My Current Location
+                      </>
+                    )}
+                  </button>
+                  
+                  {error && (
+                    <div className="location-message error">
+                      <span className="form-message-icon">⚠️</span>
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  {message && (
+                    <div className="location-message success">
+                      <span className="form-message-icon">✓</span>
+                      <span>{message}</span>
+                    </div>
+                  )}
+                  
                   <p className="location-instruction">
-                    💡 Click on the map to select the exact location
+                    💡 Click on the map or use GPS to select the exact location
                   </p>
                 </div>
               </div>
