@@ -37,6 +37,10 @@ export interface Issue {
   createdAt: string;
   updatedAt: string;
   history?: StatusHistoryEntry[];
+  _count?: {
+    comments: number;
+    upvotes: number;
+  };
 }
 
 export interface IssueWithStats extends Issue {
