@@ -41,7 +41,7 @@ export function IssueDetailsPage({ user: _user }: IssueDetailsPageProps) {
       setIssue(issueResponse.issue);
       setUpvoteCount(issueResponse.stats.upvoteCount);
       setComments(commentsData);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to fetch issue:", err);
       setError("Failed to load issue. Please try again.");
     } finally {

@@ -76,7 +76,7 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
           console.log('Map size invalidated');
         }
       }, 200);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error initializing map:', err);
     }
 

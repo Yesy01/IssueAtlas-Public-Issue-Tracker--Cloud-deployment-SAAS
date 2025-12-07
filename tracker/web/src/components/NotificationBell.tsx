@@ -53,7 +53,7 @@ export function NotificationBell({ user }: NotificationBellProps) {
     try {
       const response = await api.get('/notifications/unread-count');
       setUnreadCount(response.data.count);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch unread count:', error);
     }
   };
@@ -63,7 +63,7 @@ export function NotificationBell({ user }: NotificationBellProps) {
       setLoading(true);
       const response = await api.get('/notifications?limit=10');
       setNotifications(response.data.notifications);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch notifications:', error);
     } finally {
       setLoading(false);
@@ -84,7 +84,7 @@ export function NotificationBell({ user }: NotificationBellProps) {
         prev.map(n => (n.id === notificationId ? { ...n, read: true } : n))
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to mark notification as read:', error);
     }
   };
@@ -94,7 +94,7 @@ export function NotificationBell({ user }: NotificationBellProps) {
       await api.post('/notifications/read-all');
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to mark all as read:', error);
     }
   };

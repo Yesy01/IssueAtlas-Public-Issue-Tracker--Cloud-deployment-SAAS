@@ -38,7 +38,7 @@ export function UpvoteButton({ issueId, initialCount, onUpvote }: UpvoteButtonPr
       const response = await upvoteIssue(issueId);
       setCount(response.upvoteCount);
       onUpvote?.(response.upvoteCount);
-    } catch (err) {
+    } catch (err: unknown) {
       // Rollback on error
       setCount(previousCount);
       setHasVoted(false);

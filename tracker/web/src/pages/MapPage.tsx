@@ -1,37 +1,133 @@
 // src/pages/MapPage.tsx
 import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import L, { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../lib/api";
 import type { Issue, IssueStatus, IssueType, User } from "../types";
+import { StatusBadge, LoadingSpinner } from "../components";
+import { STATUS_COLORS, STATUS_LABELS } from "../lib/status";
+import "./MapPage.css";
 
 interface MapPageProps {
   user: User | null;
 }
 
-export function MapPage({ user }: MapPageProps) {
+export function MapPage({ user: _user }: MapPageProps) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [status, setStatus] = useState<IssueStatus | "">("");
   const [type, setType] = useState<IssueType | "">("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const navigate = useNavigate();
   const mapRef = useRef<LeafletMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+
+  const escapeHtml = (value: string) =>
+    value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  const truncate = (value: string, limit = 140) => {
+    const normalized = value.replace(/\s+/g, " ").trim();
+    return normalized.length > limit
+      ? `${normalized.slice(0, limit - 1)}…`
+      : normalized;
+  };
+
+  const formatIssueType = (value: string) =>
+    value
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
 
   // Init map once
   useEffect(() => {
     if (mapRef.current || !mapContainerRef.current) return;
 
-    const map = L.map(mapContainerRef.current).setView([20, 78], 4); // rough India
+    const container = mapContainerRef.current;
+    const map = L.map(container).setView([20, 78], 4); // rough India
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
-    }).addTo(map);
+    // Determine initial theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const tileUrl = isDark 
+      ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+      : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+    
+    const attribution = isDark
+      ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+      : "© OpenStreetMap contributors";
+
+    const tileLayer = L.tileLayer(tileUrl, { attribution });
+    tileLayer.addTo(map);
+    tileLayerRef.current = tileLayer;
 
     markersRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
+
+    if (container && typeof ResizeObserver !== "undefined") {
+      const resizeObserver = new ResizeObserver(() => {
+        map.invalidateSize();
+      });
+      resizeObserver.observe(container);
+      resizeObserverRef.current = resizeObserver;
+    }
+
+    // Fix loading buffer issue
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
+    // Cleanup on unmount
+    return () => {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update map tiles when theme changes
+  useEffect(() => {
+    if (!mapRef.current || !tileLayerRef.current) return;
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          const tileUrl = isDark 
+            ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+          
+          const attribution = isDark
+            ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+            : "© OpenStreetMap contributors";
+
+          if (tileLayerRef.current && mapRef.current) {
+            mapRef.current.removeLayer(tileLayerRef.current);
+            const newTileLayer = L.tileLayer(tileUrl, { attribution });
+            newTileLayer.addTo(mapRef.current);
+            tileLayerRef.current = newTileLayer;
+          }
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+
+    return () => observer.disconnect();
   }, []);
 
   // Fetch issues with filters
@@ -39,14 +135,14 @@ export function MapPage({ user }: MapPageProps) {
     async function fetchIssues() {
       setLoading(true);
       try {
-        const params: any = {};
+        const params: Record<string, string> = {};
         if (status) params.status = status;
         if (type) params.type = type;
         if (search) params.search = search;
 
         const res = await api.get<{ items: Issue[] }>("/issues", { params });
         setIssues(res.data.items);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Failed to fetch issues", err);
       } finally {
         setLoading(false);
@@ -63,18 +159,144 @@ export function MapPage({ user }: MapPageProps) {
     group.clearLayers();
 
     issues.forEach((issue) => {
-      const color = statusColor(issue.status);
+      const color = STATUS_COLORS[issue.status];
       const marker = L.circleMarker([issue.lat, issue.lon], {
-        radius: 6,
+        radius: 8,
         color,
         fillColor: color,
         fillOpacity: 0.8,
-      }).bindPopup(
-        `<strong>${issue.title}</strong><br/>
-        Status: ${issue.status}<br/>
-        Type: ${issue.type}<br/>
-        ${issue.areaName ?? ""}`
-      );
+        weight: 2,
+      });
+
+      const popupContent = `
+        <div class="map-issue-popup">
+          ${
+            issue.imageUrl
+              ? `<img src="${encodeURI(issue.imageUrl)}" alt="${escapeHtml(
+                  issue.title
+                )}" class="map-issue-popup-image" loading="lazy" />`
+              : ""
+          }
+          <div class="map-issue-popup-body">
+            <h3 class="map-issue-popup-title">${escapeHtml(issue.title)}</h3>
+            <div class="map-issue-popup-meta">
+              <span class="map-issue-popup-status" data-status="${issue.status}">${escapeHtml(
+                STATUS_LABELS[issue.status]
+              )}</span>
+              <span class="map-issue-popup-type">${escapeHtml(
+                formatIssueType(issue.type)
+              )}</span>
+              ${
+                issue.areaName
+                  ? `<span class="map-issue-popup-area">📍 ${escapeHtml(issue.areaName)}</span>`
+                  : ""
+              }
+            </div>
+            ${
+              issue.description
+                ? `<p class="map-issue-popup-description">${escapeHtml(
+                    truncate(issue.description)
+                  )}</p>`
+                : ""
+            }
+            <button type="button" class="issue-popup-button" data-issue-id="${issue.id}">
+              View Details
+            </button>
+          </div>
+        </div>
+      `;
+
+      marker.bindPopup(popupContent, {
+        className: "map-issue-popup-container",
+        closeButton: true,
+        maxWidth: 280,
+        offset: L.point(0, -10),
+      });
+
+      let closeTimeout: ReturnType<typeof window.setTimeout> | null = null;
+      let popupHovered = false;
+      let markerHovered = false;
+
+      const scheduleClose = () => {
+        if (closeTimeout) clearTimeout(closeTimeout);
+        closeTimeout = window.setTimeout(() => {
+          if (!popupHovered && !markerHovered) {
+            marker.closePopup();
+          }
+        }, 200);
+      };
+
+      const clearClose = () => {
+        if (closeTimeout) {
+          clearTimeout(closeTimeout);
+          closeTimeout = null;
+        }
+      };
+
+      marker.on("mouseover", () => {
+        markerHovered = true;
+        clearClose();
+        marker.openPopup();
+      });
+
+      marker.on("mouseout", () => {
+        markerHovered = false;
+        scheduleClose();
+      });
+
+      marker.on("click", () => {
+        markerHovered = true;
+        clearClose();
+        marker.openPopup();
+      });
+
+      marker.on("popupopen", () => {
+        const popupElement = marker.getPopup()?.getElement();
+        if (!popupElement) return;
+
+        const handlePopupMouseEnter = () => {
+          popupHovered = true;
+          clearClose();
+        };
+
+        const handlePopupMouseLeave = () => {
+          popupHovered = false;
+          scheduleClose();
+        };
+
+        popupElement.addEventListener("mouseenter", handlePopupMouseEnter);
+        popupElement.addEventListener("mouseleave", handlePopupMouseLeave);
+
+        const button = popupElement.querySelector<HTMLButtonElement>(
+          ".issue-popup-button"
+        );
+        
+        const handleButtonClick = (e: Event) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const issueId = (e.currentTarget as HTMLElement).getAttribute("data-issue-id");
+          if (issueId) {
+            navigate(`/issues/${issueId}`);
+          }
+        };
+
+        if (button) {
+          button.addEventListener("click", handleButtonClick);
+        }
+
+        L.DomEvent.disableClickPropagation(popupElement);
+
+        marker.once("popupclose", () => {
+          popupElement.removeEventListener("mouseenter", handlePopupMouseEnter);
+          popupElement.removeEventListener("mouseleave", handlePopupMouseLeave);
+          if (button) {
+            button.removeEventListener("click", handleButtonClick);
+          }
+          popupHovered = false;
+          clearClose();
+        });
+      });
+
       marker.addTo(group);
     });
 
@@ -82,90 +304,140 @@ export function MapPage({ user }: MapPageProps) {
       const bounds = L.latLngBounds(issues.map((i) => [i.lat, i.lon]));
       mapRef.current.fitBounds(bounds, { padding: [20, 20] });
     }
-  }, [issues]);
+
+    requestAnimationFrame(() => {
+      mapRef.current?.invalidateSize();
+    });
+  }, [issues, navigate]);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem" }}>
-      <div>
-        <div
-          ref={mapContainerRef}
-          style={{ height: "400px", border: "1px solid #ccc" }}
-        />
+    <div className="map-page">
+      <div className="map-page-header">
+        <div>
+          <h1 className="map-page-title">Issue Map</h1>
+          <p className="map-page-subtitle">View and explore reported issues in your area</p>
+        </div>
       </div>
-      <div>
-        <h2>Issues</h2>
-        <div style={{ marginBottom: "0.5rem", display: "flex", gap: "0.5rem" }}>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as any)}
-          >
-            <option value="">All statuses</option>
-            <option value="new">New</option>
-            <option value="triaged">Triaged</option>
-            <option value="in_progress">In progress</option>
-            <option value="resolved">Resolved</option>
-          </select>
 
-          <select value={type} onChange={(e) => setType(e.target.value as any)}>
-            <option value="">All types</option>
-            <option value="pothole">Pothole</option>
-            <option value="streetlight">Streetlight</option>
-            <option value="drainage">Drainage</option>
-            <option value="other">Other</option>
-          </select>
-
-          <input
-            placeholder="Search title/description"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: 1 }}
-          />
+      <div className="map-page-content">
+        <div className="map-section">
+          <div ref={mapContainerRef} className="map-container" />
         </div>
 
-        {loading && <div>Loading...</div>}
-
-        <ul style={{ maxHeight: "320px", overflowY: "auto", padding: 0 }}>
-          {issues.map((issue) => (
-            <li
-              key={issue.id}
-              style={{
-                listStyle: "none",
-                padding: "0.5rem",
-                borderBottom: "1px solid #eee",
-              }}
-            >
-              <strong>{issue.title}</strong> ({issue.type})<br />
-              <span>Status: {issue.status}</span>
-              {issue.areaName && <div>Area: {issue.areaName}</div>}
-              {issue.imageUrl && (
-                <div>
-                  <a href={issue.imageUrl} target="_blank" rel="noreferrer">
-                    View image
-                  </a>
+        <div className="sidebar-section">
+          <div className="filters-card">
+            <h2 className="filters-title">Filters</h2>
+            <div className="filters-container">
+              <div className="filter-group search-filter">
+                <label htmlFor="search-filter" className="filter-label">
+                  Search
+                </label>
+                <input
+                  id="search-filter"
+                  className="filter-input"
+                  placeholder="Search title or description..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              
+              <div className="filters-row">
+                <div className="filter-group">
+                  <label htmlFor="status-filter" className="filter-label">
+                    Status
+                  </label>
+                  <select
+                    id="status-filter"
+                    className="filter-select"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as IssueStatus | "")}
+                  >
+                    <option value="">All statuses</option>
+                    <option value="new">New</option>
+                    <option value="triaged">Triaged</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
                 </div>
-              )}
-            </li>
-          ))}
-        </ul>
-        {!loading && issues.length === 0 && <div>No issues found.</div>}
-        {user && <div style={{ marginTop: "0.5rem" }}>Logged in as: {user.email}</div>}
+
+                <div className="filter-group">
+                  <label htmlFor="type-filter" className="filter-label">
+                    Type
+                  </label>
+                  <select
+                    id="type-filter"
+                    className="filter-select"
+                    value={type}
+                    onChange={(e) => setType(e.target.value as IssueType | "")}
+                  >
+                    <option value="">All types</option>
+                    <option value="pothole">Pothole</option>
+                    <option value="streetlight">Streetlight</option>
+                    <option value="drainage">Drainage</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="issues-list-card">
+            <div className="issues-list-header">
+              <span className="issues-count">
+                Issues
+                <span className="issues-count-badge">{issues.length}</span>
+              </span>
+            </div>
+
+            {loading ? (
+              <div className="loading-state">
+                <LoadingSpinner size="medium" />
+              </div>
+            ) : issues.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">📍</div>
+                <p className="empty-state-text">No issues found matching your filters.</p>
+              </div>
+            ) : (
+              <div className="issues-scroll-container">
+                <div className="issues-list">
+                  {issues.map((issue) => (
+                    <Link
+                      key={issue.id}
+                      to={`/issues/${issue.id}`}
+                      className="issue-list-item"
+                    >
+                      <div className="issue-item-header">
+                        <h3 className="issue-item-title">{issue.title}</h3>
+                        <StatusBadge status={issue.status} size="small" />
+                      </div>
+                      <div className="issue-item-meta">
+                        <span className="issue-type-badge">{issue.type}</span>
+                        {issue.areaName && (
+                          <span className="issue-area">
+                            📍 {issue.areaName}
+                          </span>
+                        )}
+                      </div>
+                      {issue.imageUrl && (
+                        <a
+                          href={issue.imageUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="issue-image-link"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          📷 View image
+                        </a>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
-function statusColor(status: IssueStatus): string {
-  switch (status) {
-    case "new":
-      return "red";
-    case "triaged":
-      return "orange";
-    case "in_progress":
-      return "blue";
-    case "resolved":
-      return "green";
-    default:
-      return "gray";
-  }
-}
-export default MapPage;

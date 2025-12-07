@@ -1,5 +1,6 @@
 // src/pages/GuestReportPage.tsx
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import L, { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -34,7 +35,8 @@ export function GuestReportPage() {
       try {
         const res = await api.post<{ token: string }>("/auth/guest");
         setGuestToken(res.data.token);
-      } catch (err) {
+      } catch (err: unknown) {
+        console.error(err);
         setError("Failed to initialize guest session. Please try again.");
       }
     }

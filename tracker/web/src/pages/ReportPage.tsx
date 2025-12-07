@@ -161,9 +161,10 @@ export function ReportPage({ user }: ReportPageProps) {
 
       // Scroll to top to show success message
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      const msg = err?.response?.data?.error ?? "Failed to create issue. Please try again.";
+      const msg =
+        err instanceof Error ? err.message : "Failed to create issue. Please try again.";
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -481,4 +482,3 @@ export function ReportPage({ user }: ReportPageProps) {
     </div>
   );
 }
-export default ReportPage;

@@ -37,7 +37,7 @@ export function CommentForm({ issueId, onCommentAdded }: CommentFormProps) {
       const comment = await createComment(issueId, body.trim());
       onCommentAdded(comment);
       setBody("");
-    } catch (err) {
+    } catch (err: unknown) {
       setError("Failed to post comment. Please try again.");
       console.error("Comment error:", err);
     } finally {

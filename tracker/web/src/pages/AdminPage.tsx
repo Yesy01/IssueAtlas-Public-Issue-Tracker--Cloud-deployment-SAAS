@@ -10,7 +10,7 @@ interface AdminPageProps {
   user: User;
 }
 
-export function AdminPage({ user }: AdminPageProps) {
+export function AdminPage({ user: _user }: AdminPageProps) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +23,7 @@ export function AdminPage({ user }: AdminPageProps) {
       const params = filter === "all" ? {} : { status: filter };
       const res = await api.get<{ items: Issue[] }>("/issues", { params });
       setIssues(res.data.items);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       setError("Failed to load issues");
     } finally {
@@ -39,7 +39,7 @@ export function AdminPage({ user }: AdminPageProps) {
     try {
       await api.patch(`/issues/${id}/status`, { newStatus });
       await load();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
       alert("Failed to update status");
     }
@@ -191,4 +191,3 @@ export function AdminPage({ user }: AdminPageProps) {
     </div>
   );
 }
-export default AdminPage;
