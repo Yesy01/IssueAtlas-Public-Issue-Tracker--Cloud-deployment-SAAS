@@ -1,16 +1,13 @@
-// src/pages/ReportPage.tsx
+// src/pages/GuestReportPage.tsx
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import L, { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../lib/api";
-import type { Issue, IssueType, User } from "../types";
+import type { IssueType } from "../types";
 import "./ReportPage.css";
 
-interface ReportPageProps {
-  user: User;
-}
-
-export function ReportPage({ user }: ReportPageProps) {
+export function GuestReportPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<IssueType>("pothole");
@@ -23,19 +20,33 @@ export function ReportPage({ user }: ReportPageProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [guestToken, setGuestToken] = useState<string | null>(null);
 
+  const navigate = useNavigate();
   const mapRef = useRef<LeafletMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
 
+  // Get guest token on mount
+  useEffect(() => {
+    async function getGuestToken() {
+      try {
+        const res = await api.post<{ token: string }>("/auth/guest");
+        setGuestToken(res.data.token);
+      } catch (err) {
+        setError("Failed to initialize guest session. Please try again.");
+      }
+    }
+    getGuestToken();
+  }, []);
+
+  // Initialize map
   useEffect(() => {
     if (mapRef.current || !mapContainerRef.current) return;
 
     const map = L.map(mapContainerRef.current).setView([20, 78], 4);
     
-    // Determine initial theme
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const tileUrl = isDark 
       ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
@@ -45,9 +56,7 @@ export function ReportPage({ user }: ReportPageProps) {
       ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
       : "© OpenStreetMap contributors";
 
-    const tileLayer = L.tileLayer(tileUrl, { attribution });
-    tileLayer.addTo(map);
-    tileLayerRef.current = tileLayer;
+    L.tileLayer(tileUrl, { attribution }).addTo(map);
 
     map.on("click", (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
@@ -62,42 +71,9 @@ export function ReportPage({ user }: ReportPageProps) {
     });
 
     mapRef.current = map;
-
-    // Fix loading buffer issue
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 100);
-
-    // Update tiles when theme changes
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'data-theme') {
-          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-          const tileUrl = isDark 
-            ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-          
-          const attribution = isDark
-            ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
-            : "© OpenStreetMap contributors";
-
-          if (tileLayerRef.current && mapRef.current) {
-            mapRef.current.removeLayer(tileLayerRef.current);
-            const newTileLayer = L.tileLayer(tileUrl, { attribution });
-            newTileLayer.addTo(mapRef.current);
-            tileLayerRef.current = newTileLayer;
-          }
-        }
-      });
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme']
-    });
+    setTimeout(() => map.invalidateSize(), 100);
 
     return () => {
-      observer.disconnect();
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -109,6 +85,11 @@ export function ReportPage({ user }: ReportPageProps) {
     e.preventDefault();
     setError(null);
     setMessage(null);
+
+    if (!guestToken) {
+      setError("Guest session not initialized. Please refresh the page.");
+      return;
+    }
 
     if (lat == null || lon == null) {
       setError("Please click on the map to choose a location for the issue.");
@@ -123,12 +104,15 @@ export function ReportPage({ user }: ReportPageProps) {
         const formData = new FormData();
         formData.append("file", file);
         const uploadRes = await api.post<{ url: string }>("/uploads", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: { 
+            "Content-Type": "multipart/form-data",
+            "Authorization": `Bearer ${guestToken}`
+          },
         });
         imageUrl = uploadRes.data.url;
       }
 
-      const res = await api.post<{ issue: Issue }>("/issues", {
+      await api.post("/issues", {
         title,
         description,
         type,
@@ -137,9 +121,13 @@ export function ReportPage({ user }: ReportPageProps) {
         address: address || undefined,
         areaName: areaName || undefined,
         imageUrl,
+      }, {
+        headers: {
+          "Authorization": `Bearer ${guestToken}`
+        }
       });
 
-      setMessage(`Issue reported successfully! Issue ID: ${res.data.issue.id}`);
+      setMessage("Issue reported successfully! Thank you for helping improve your community.");
       
       // Reset form
       setTitle("");
@@ -158,11 +146,12 @@ export function ReportPage({ user }: ReportPageProps) {
         setLon(null);
       }
 
-      // Scroll to top to show success message
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      const msg = err?.response?.data?.error ?? "Failed to create issue. Please try again.";
+      const msg = err instanceof Error && 'response' in err && typeof err.response === 'object' && err.response !== null && 'data' in err.response && typeof err.response.data === 'object' && err.response.data !== null && 'error' in err.response.data
+        ? String(err.response.data.error)
+        : "Failed to create issue. Please try again.";
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -172,7 +161,6 @@ export function ReportPage({ user }: ReportPageProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      // Validate file size (max 5MB)
       if (selectedFile.size > 5 * 1024 * 1024) {
         setError("Image size must be less than 5MB");
         return;
@@ -206,33 +194,31 @@ export function ReportPage({ user }: ReportPageProps) {
         if (mapRef.current) {
           const latlng = L.latLng(latitude, longitude);
           
-          // Update or create marker
           if (markerRef.current) {
             markerRef.current.setLatLng(latlng);
           } else {
             markerRef.current = L.marker(latlng).addTo(mapRef.current);
           }
 
-          // Center map on user location with appropriate zoom
           mapRef.current.setView(latlng, 15);
         }
 
         setGettingLocation(false);
-        setMessage("Location detected successfully! You can adjust by clicking on the map.");
+        setMessage("Location detected successfully!");
         setTimeout(() => setMessage(null), 5000);
       },
-      (error) => {
+      (err) => {
         setGettingLocation(false);
         let errorMessage = "Unable to retrieve your location. ";
         
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage += "Please enable location permissions in your browser settings.";
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            errorMessage += "Please enable location permissions.";
             break;
-          case error.POSITION_UNAVAILABLE:
+          case err.POSITION_UNAVAILABLE:
             errorMessage += "Location information is unavailable.";
             break;
-          case error.TIMEOUT:
+          case err.TIMEOUT:
             errorMessage += "Location request timed out.";
             break;
           default:
@@ -252,10 +238,13 @@ export function ReportPage({ user }: ReportPageProps) {
   return (
     <div className="report-page">
       <header className="report-header">
-        <h1 className="report-title">Report an Issue</h1>
+        <h1 className="report-title">Report an Issue (Guest)</h1>
         <p className="report-subtitle">
           Help improve your community by reporting infrastructure problems
         </p>
+        <div className="guest-notice">
+          📝 You're submitting as a guest. <button onClick={() => navigate("/auth")} className="auth-link-btn">Sign in</button> for full access to features.
+        </div>
       </header>
 
       <div className="report-content">
@@ -291,7 +280,7 @@ export function ReportPage({ user }: ReportPageProps) {
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       required
-                      placeholder="Provide detailed information about the issue"
+                      placeholder="Provide detailed information"
                     />
                   </div>
 
@@ -337,7 +326,7 @@ export function ReportPage({ user }: ReportPageProps) {
                       type="text"
                       value={areaName}
                       onChange={(e) => setAreaName(e.target.value)}
-                      placeholder="Neighborhood or locality (optional)"
+                      placeholder="Neighborhood (optional)"
                     />
                   </div>
                 </div>
@@ -384,7 +373,7 @@ export function ReportPage({ user }: ReportPageProps) {
                   )}
                   
                   <p className="location-instruction">
-                    💡 Click on the map or use GPS to select the exact location
+                    💡 Click on the map or use GPS
                   </p>
                 </div>
               </div>
@@ -427,7 +416,7 @@ export function ReportPage({ user }: ReportPageProps) {
               </div>
 
               <div className="form-actions">
-                <button type="submit" disabled={submitting} className="submit-btn">
+                <button type="submit" disabled={submitting || !guestToken} className="submit-btn">
                   {submitting ? (
                     <>
                       <span className="submit-spinner"></span>
@@ -439,11 +428,6 @@ export function ReportPage({ user }: ReportPageProps) {
                     </>
                   )}
                 </button>
-              </div>
-
-              <div className="user-info-badge">
-                <span className="user-info-icon">👤</span>
-                Reporting as <span className="user-info-email">{user.email}</span>
               </div>
             </form>
           </div>
@@ -457,7 +441,7 @@ export function ReportPage({ user }: ReportPageProps) {
                 Select Location
               </h3>
               <p className="map-section-description">
-                Click on the map to mark the exact location of the issue
+                Click on the map to mark the exact location
               </p>
             </div>
 
@@ -466,12 +450,11 @@ export function ReportPage({ user }: ReportPageProps) {
             </div>
 
             <div className="map-tips">
-              <h4 className="map-tips-title">Tips for accurate reporting:</h4>
+              <h4 className="map-tips-title">Tips:</h4>
               <ul className="map-tips-list">
-                <li>Zoom in for precise location marking</li>
-                <li>Click directly on the issue location</li>
-                <li>You can adjust by clicking a new location</li>
-                <li>The marker shows your selected spot</li>
+                <li>Zoom in for precise location</li>
+                <li>Click directly on the issue</li>
+                <li>You can adjust by clicking again</li>
               </ul>
             </div>
           </div>

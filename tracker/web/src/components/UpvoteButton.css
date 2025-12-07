@@ -1,0 +1,56 @@
+/* src/components/UpvoteButton.css */
+.upvote-container {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.upvote-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--color-border);
+  border-radius: 20px;
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 1rem;
+}
+
+.upvote-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background-color: var(--color-gray-100);
+  transform: none;
+  box-shadow: none;
+}
+
+.upvote-btn.voted {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.upvote-btn.loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.upvote-btn:disabled {
+  cursor: not-allowed;
+}
+
+.upvote-icon {
+  font-size: 1.1rem;
+}
+
+.upvote-count {
+  font-weight: 600;
+}
+
+.upvote-error {
+  font-size: 0.75rem;
+  color: var(--color-danger);
+}

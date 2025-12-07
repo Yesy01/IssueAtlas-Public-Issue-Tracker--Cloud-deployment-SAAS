@@ -27,42 +27,48 @@ enum IssueType {
 }
 
 model User {
-  id        String        @id @default(cuid())
-  email     String        @unique
-  password  String
-  role      Role          @default(user)
-  createdAt DateTime      @default(now())
-  issues    Issue[]
-  comments  Comment[]
-  upvotes   IssueUpvote[]
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  role          Role           @default(user)
+  createdAt     DateTime       @default(now())
+  issues        Issue[]
+  comments      Comment[]
+  upvotes       IssueUpvote[]
+  notifications Notification[]
+  passwordResets PasswordReset[]
 }
 
 
 
 model Issue {
-  id          String          @id @default(cuid())
-  reporterId  String
-  reporter    User            @relation(fields: [reporterId], references: [id])
+  id            String          @id @default(cuid())
+  reporterId    String
+  reporter      User            @relation(fields: [reporterId], references: [id])
 
-  title       String
-  description String
+  title         String
+  description   String
 
-  status      IssueStatus     @default(new)
-  type        IssueType
+  status        IssueStatus     @default(new)
+  type          IssueType
 
-  lat         Float
-  lon         Float
+  lat           Float
+  lon           Float
 
-  imageUrl    String?
-  address     String?
-  areaName    String?
+  imageUrl      String?
+  address       String?
+  areaName      String?
 
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  adminResponse String?
+  adminRespondedAt DateTime?
 
-  history     StatusHistory[]
-  comments    Comment[]
-  upvotes     IssueUpvote[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  history       StatusHistory[]
+  comments      Comment[]
+  upvotes       IssueUpvote[]
+  notifications Notification[]
 }
 
 model Comment {
@@ -99,4 +105,45 @@ model StatusHistory {
   newStatus IssueStatus
   changedBy String
   changedAt DateTime     @default(now())
+}
+
+enum NotificationType {
+  status_change
+  new_comment
+  issue_resolved
+  issue_upvoted
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  
+  type      NotificationType
+  title     String
+  message   String
+  
+  issueId   String?
+  issue     Issue?           @relation(fields: [issueId], references: [id])
+  
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([token])
+  @@index([userId, used])
 }

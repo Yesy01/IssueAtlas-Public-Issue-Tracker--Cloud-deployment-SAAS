@@ -1,9 +1,11 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { PrismaClient } from "@prisma/client";
 import { RegisterSchema, LoginSchema } from "../lib/validation";
 import { signAccessToken } from "../lib/auth";
 import { authGuard } from "../middleware/authGuard";
+import { logger } from "../lib/logger";
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -134,6 +136,166 @@ router.get("/me", authGuard, async (req: Request, res: Response) => {
   }
 
   return res.json({ user });
+});
+
+/**
+ * POST /api/auth/guest
+ *
+ * - Creates a temporary guest token for anonymous issue submission
+ * - Guest can only create issues, not view/comment/upvote
+ */
+router.post("/guest", async (req: Request, res: Response) => {
+  // Create a temporary guest identifier
+  const guestId = `guest_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  
+  // Sign a token with limited permissions (no real user ID)
+  const token = signAccessToken({ userId: guestId, role: "guest" });
+
+  return res.status(200).json({
+    token,
+    message: "Guest access granted. You can submit issues but have limited access to other features.",
+  });
+});
+
+/**
+ * POST /api/auth/forgot-password
+ *
+ * - Generates a secure reset token
+ * - Stores token in database with expiration
+ * - In production, would send email with reset link
+ * - Rate limited to prevent abuse
+ */
+router.post("/forgot-password", async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  try {
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    // Always return success to prevent email enumeration attacks
+    if (!user) {
+      logger.warn(`Password reset requested for non-existent email: ${email}`);
+      return res.status(200).json({
+        message: "If that email exists, a password reset link has been sent.",
+      });
+    }
+
+    // Generate secure random token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Invalidate any existing tokens for this user
+    await prisma.passwordReset.updateMany({
+      where: {
+        userId: user.id,
+        used: false,
+      },
+      data: {
+        used: true,
+      },
+    });
+
+    // Create new password reset token
+    await prisma.passwordReset.create({
+      data: {
+        userId: user.id,
+        token: resetToken,
+        expiresAt,
+      },
+    });
+
+    logger.info(`Password reset token generated for user: ${user.email}`);
+
+    // TODO: Send email with reset link
+    // const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    // await sendEmail({
+    //   to: user.email,
+    //   subject: 'Password Reset Request',
+    //   html: `Click here to reset your password: ${resetLink}`
+    // });
+
+    // For development, log the token (REMOVE IN PRODUCTION)
+    if (process.env.NODE_ENV !== 'production') {
+      logger.debug(`Reset token for ${email}: ${resetToken}`);
+    }
+
+    return res.status(200).json({
+      message: "If that email exists, a password reset link has been sent.",
+    });
+  } catch (error) {
+    logger.error('Error in forgot-password', { error });
+    return res.status(500).json({ error: "Failed to process password reset" });
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ *
+ * - Validates reset token
+ * - Checks expiration
+ * - Updates user password
+ * - Marks token as used
+ */
+router.post("/reset-password", async (req: Request, res: Response) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ error: "Token and new password are required" });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters" });
+  }
+
+  try {
+    // Find valid reset token
+    const resetRecord = await prisma.passwordReset.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!resetRecord) {
+      return res.status(400).json({ error: "Invalid reset token" });
+    }
+
+    if (resetRecord.used) {
+      return res.status(400).json({ error: "Reset token has already been used" });
+    }
+
+    if (resetRecord.expiresAt < new Date()) {
+      return res.status(400).json({ error: "Reset token has expired" });
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update user password and mark token as used
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetRecord.userId },
+        data: { password: passwordHash },
+      }),
+      prisma.passwordReset.update({
+        where: { id: resetRecord.id },
+        data: { used: true },
+      }),
+    ]);
+
+    logger.info(`Password reset successful for user: ${resetRecord.user.email}`);
+
+    return res.status(200).json({
+      message: "Password has been reset successfully. You can now log in with your new password.",
+    });
+  } catch (error) {
+    logger.error('Error in reset-password', { error });
+    return res.status(500).json({ error: "Failed to reset password" });
+  }
 });
 
 export default router;

@@ -2,17 +2,24 @@ import { Router, Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import {
   IssueCreateSchema,
+  IssueUpdateSchema,
   IssueStatusUpdateSchema,
+  CommentCreateSchema,
 } from "../lib/validation";
 import { authGuard } from "../middleware/authGuard";
 import { adminOnly } from "../middleware/adminOnly";
+import {
+  notifyStatusChange,
+  notifyNewComment,
+  notifyUpvote,
+} from "../lib/notifications";
 
 const prisma = new PrismaClient();
 const router = Router();
 
 /**
  * POST /api/issues
- * Auth: required (any logged-in user)
+ * Auth: required (any logged-in user or guest)
  */
 router.post("/", authGuard, async (req: Request, res: Response) => {
   const parseResult = IssueCreateSchema.safeParse(req.body);
@@ -30,9 +37,37 @@ router.post("/", authGuard, async (req: Request, res: Response) => {
   const data = parseResult.data;
 
   try {
+    // For guest users, use a placeholder reporter or null
+    // Guest IDs start with "guest_" and aren't in the database
+    const isGuest = req.user.role === "guest" || req.user.id.startsWith("guest_");
+    
+    let reporterId: number;
+    
+    if (isGuest) {
+      // Find or create a special "guest" user for anonymous submissions
+      let guestUser = await prisma.user.findFirst({
+        where: { email: "guest@system.local" },
+      });
+      
+      if (!guestUser) {
+        // Create a system guest user if it doesn't exist
+        guestUser = await prisma.user.create({
+          data: {
+            email: "guest@system.local",
+            password: "", // No password for system user
+            role: "user",
+          },
+        });
+      }
+      
+      reporterId = guestUser.id;
+    } else {
+      reporterId = req.user.id;
+    }
+
     const issue = await prisma.issue.create({
       data: {
-        reporterId: req.user.id,
+        reporterId,
         title: data.title,
         description: data.description,
         type: data.type,
@@ -54,16 +89,23 @@ router.post("/", authGuard, async (req: Request, res: Response) => {
 
 /**
  * GET /api/issues
- * Public: list issues with optional filters
+ * Public: list issues with optional filters and pagination
  *
  * Query params:
  *  - status: new|triaged|in_progress|resolved
  *  - type: pothole|streetlight|drainage|other
  *  - bbox: "minLon,minLat,maxLon,maxLat"
  *  - search: free text in title/description
+ *  - page: page number (default: 1)
+ *  - limit: items per page (default: 20, max: 100)
  */
 router.get("/", async (req: Request, res: Response) => {
   const { status, type, bbox, search } = req.query;
+  
+  // Pagination
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+  const skip = (page - 1) * limit;
 
   const where: any = {};
 
@@ -107,14 +149,36 @@ router.get("/", async (req: Request, res: Response) => {
   }
 
   try {
-    const issues = await prisma.issue.findMany({
-      where,
-      orderBy: {
-        createdAt: "desc",
+    const [issues, total] = await Promise.all([
+      prisma.issue.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          _count: {
+            select: {
+              comments: true,
+              upvotes: true,
+            },
+          },
+        },
+      }),
+      prisma.issue.count({ where }),
+    ]);
+
+    return res.json({
+      items: issues,
+      count: issues.length,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     });
-
-    return res.json({ items: issues, count: issues.length });
   } catch (err) {
     console.error("[GET /api/issues] error:", err);
     return res.status(500).json({ error: "Failed to list issues" });
@@ -162,6 +226,66 @@ router.get("/:id", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("[GET /api/issues/:id] error:", err);
     return res.status(500).json({ error: "Failed to fetch issue" });
+  }
+});
+
+/**
+ * PUT /api/issues/:id
+ * Auth: required (owner only)
+ * Update issue details (not status - that's admin only via PATCH)
+ */
+router.put("/:id", authGuard, async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!req.user) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  const parseResult = IssueUpdateSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({
+      error: "Invalid request body",
+      details: parseResult.error.flatten(),
+    });
+  }
+
+  try {
+    const existing = await prisma.issue.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: "Issue not found" });
+    }
+
+    // Check ownership - only the reporter can edit their own issue
+    // Admins can also edit any issue
+    if (existing.reporterId !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Not authorized to edit this issue" });
+    }
+
+    const data = parseResult.data;
+
+    const updated = await prisma.issue.update({
+      where: { id },
+      data: {
+        ...(data.title && { title: data.title }),
+        ...(data.description && { description: data.description }),
+        ...(data.type && { type: data.type }),
+        ...(data.address !== undefined && { address: data.address }),
+        ...(data.areaName !== undefined && { areaName: data.areaName }),
+      },
+      include: {
+        reporter: {
+          select: { id: true, email: true, role: true },
+        },
+      },
+    });
+
+    return res.json({ issue: updated });
+  } catch (err) {
+    console.error("[PUT /api/issues/:id] error:", err);
+    return res.status(500).json({ error: "Failed to update issue" });
   }
 });
 
@@ -215,6 +339,20 @@ router.patch(
         },
       });
 
+      // Send notification to the issue reporter
+      try {
+        await notifyStatusChange(
+          id,
+          existing.reporterId,
+          existing.status,
+          newStatus,
+          existing.title
+        );
+      } catch (notifyErr) {
+        console.error("[PATCH /api/issues/:id/status] notification error:", notifyErr);
+        // Don't fail the request if notification fails
+      }
+
       return res.json({ issue: updated });
     } catch (err) {
       console.error("[PATCH /api/issues/:id/status] error:", err);
@@ -262,6 +400,19 @@ router.post("/:id/upvote", authGuard, async (req: Request, res: Response) => {
       where: { issueId },
     });
 
+    // Notify the reporter on milestone upvotes
+    try {
+      await notifyUpvote(
+        issueId,
+        issue.reporterId,
+        req.user.id,
+        issue.title,
+        upvoteCount
+      );
+    } catch (notifyErr) {
+      console.error("[POST /api/issues/:id/upvote] notification error:", notifyErr);
+    }
+
     return res.json({
       success: true,
       issueId,
@@ -272,8 +423,6 @@ router.post("/:id/upvote", authGuard, async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Failed to upvote issue" });
   }
 });
-
-import { CommentCreateSchema } from "../lib/validation"; // if not imported yet
 
 /**
  * POST /api/issues/:id/comments
@@ -312,6 +461,19 @@ router.post("/:id/comments", authGuard, async (req: Request, res: Response) => {
         },
       },
     });
+
+    // Notify the issue reporter about the new comment
+    try {
+      await notifyNewComment(
+        issueId,
+        issue.reporterId,
+        req.user.id,
+        req.user.email,
+        issue.title
+      );
+    } catch (notifyErr) {
+      console.error("[POST /api/issues/:id/comments] notification error:", notifyErr);
+    }
 
     return res.status(201).json({ comment });
   } catch (err) {

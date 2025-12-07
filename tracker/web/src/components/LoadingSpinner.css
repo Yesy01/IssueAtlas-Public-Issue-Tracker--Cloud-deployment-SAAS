@@ -1,0 +1,57 @@
+/* src/components/LoadingSpinner.css */
+.loading-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.loading-spinner {
+  border: 3px solid var(--color-gray-200);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite, pulse 2s ease-in-out infinite;
+}
+
+.loading-spinner-container.small .loading-spinner {
+  width: 1rem;
+  height: 1rem;
+  border-width: 2px;
+}
+
+.loading-spinner-container.medium .loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border-width: 3px;
+}
+
+.loading-spinner-container.large .loading-spinner {
+  width: 3rem;
+  height: 3rem;
+  border-width: 4px;
+}
+
+.loading-message {
+  margin-top: 1rem;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: fadeIn 0.5s ease-out 0.2s backwards;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}

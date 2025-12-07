@@ -1,0 +1,48 @@
+/* src/components/ErrorMessage.css */
+.error-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background-color: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  max-width: 32rem;
+  margin: 2rem auto;
+}
+
+.error-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  opacity: 0.8;
+}
+
+.error-text {
+  color: var(--color-danger);
+  margin: 0 0 1.5rem 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.retry-button {
+  background-color: var(--color-danger);
+  color: white;
+  border: none;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.retry-button:hover:not(:disabled) {
+  background-color: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.retry-button:active:not(:disabled) {
+  transform: translateY(0);
+}

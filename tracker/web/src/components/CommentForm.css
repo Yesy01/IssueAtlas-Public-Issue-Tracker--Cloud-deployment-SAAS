@@ -1,0 +1,91 @@
+/* src/components/CommentForm.css */
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.comment-form-login-prompt {
+  padding: 1rem;
+  background-color: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+[data-theme='dark'] .comment-form-login-prompt {
+  background-color: #422006;
+  border-color: #d97706;
+}
+
+.comment-form-login-prompt p {
+  margin: 0;
+  color: #92400e;
+}
+
+[data-theme='dark'] .comment-form-login-prompt p {
+  color: #fcd34d;
+}
+
+.comment-form-login-prompt a {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.comment-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+  min-height: 80px;
+  transition: all var(--transition-fast);
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+.comment-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.comment-textarea:disabled {
+  background-color: var(--color-surface);
+  cursor: not-allowed;
+}
+
+.comment-form-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+.comment-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.comment-submit-btn {
+  padding: 0.5rem 1.25rem;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.comment-submit-btn:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.comment-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
