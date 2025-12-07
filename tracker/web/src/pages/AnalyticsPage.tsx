@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import L, { Map as LeafletMap } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { api } from '../lib/api';
 import type { User } from '../types';
 import { LoadingSpinner, ErrorMessage } from '../components';
@@ -34,10 +36,103 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
   const [areas, setAreas] = useState<AreaData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const mapRef = useRef<LeafletMap | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const markersRef = useRef<L.LayerGroup | null>(null);
 
   useEffect(() => {
     fetchAnalytics();
   }, []);
+
+  // Initialize map after areas data is loaded
+  useEffect(() => {
+    if (areas.length === 0) return;
+    if (mapRef.current || !mapContainerRef.current) return;
+
+    console.log('Initializing map with', areas.length, 'areas');
+    
+    try {
+      const map = L.map(mapContainerRef.current).setView([20, 78], 5);
+      
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const tileUrl = isDark 
+        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+      
+      const attribution = isDark
+        ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+        : "© OpenStreetMap contributors";
+
+      L.tileLayer(tileUrl, { attribution, maxZoom: 19 }).addTo(map);
+      markersRef.current = L.layerGroup().addTo(map);
+      mapRef.current = map;
+
+      console.log('Map initialized successfully');
+
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize();
+          console.log('Map size invalidated');
+        }
+      }, 200);
+    } catch (err) {
+      console.error('Error initializing map:', err);
+    }
+
+    return () => {
+      if (mapRef.current) {
+        console.log('Cleaning up map');
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [areas.length]);
+
+  // Update map markers when areas data changes
+  useEffect(() => {
+    if (!mapRef.current || !markersRef.current || areas.length === 0) return;
+
+    const group = markersRef.current;
+    group.clearLayers();
+
+    const maxCount = Math.max(...areas.map(a => a.count));
+
+    areas.forEach((area) => {
+      const radius = 10 + (area.count / maxCount) * 20;
+      const resolvedPercentage = area.count > 0 ? (area.resolved / area.count) * 100 : 0;
+      
+      const color = resolvedPercentage > 70 ? '#22C55E' : 
+                    resolvedPercentage > 40 ? '#F59E0B' : '#EF4444';
+
+      const marker = L.circleMarker([area.lat, area.lng], {
+        radius,
+        fillColor: color,
+        color: '#fff',
+        weight: 2,
+        fillOpacity: 0.7,
+      });
+
+      marker.bindPopup(`
+        <div style="text-align: center; font-family: var(--font-family);">
+          <strong style="font-size: 1.1em; color: var(--color-text-primary);">${area.count} Issues</strong><br/>
+          <span style="color: var(--color-text-secondary); font-size: 0.9em;">
+            ${area.resolved} resolved (${resolvedPercentage.toFixed(0)}%)
+          </span><br/>
+          <span style="color: var(--color-text-secondary); font-size: 0.85em;">
+            ${area.lat.toFixed(4)}, ${area.lng.toFixed(4)}
+          </span>
+        </div>
+      `);
+
+      marker.addTo(group);
+    });
+
+    if (areas.length > 0) {
+      const bounds = L.latLngBounds(areas.map(a => [a.lat, a.lng]));
+      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [areas]);
 
   const fetchAnalytics = async () => {
     try {
@@ -50,11 +145,18 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
         api.get('/analytics/areas')
       ]);
       
+      console.log('Analytics data loaded:', {
+        summary: summaryRes.data,
+        trends: trendsRes.data.trends?.length,
+        areas: areasRes.data.areas?.length
+      });
+      
       setSummary(summaryRes.data);
       setTrends(trendsRes.data.trends);
       setAreas(areasRes.data.areas);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load analytics';
+      console.error('Analytics fetch error:', err);
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -237,9 +339,43 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
           )}
         </section>
 
-        {/* Top Areas */}
-        <section className="chart-section">
-          <h2>Hot Spots</h2>
+        {/* Hot Spots Map */}
+        <section className="chart-section map-section">
+          <h2>🗺️ Hot Spots Map</h2>
+          <p className="section-description">Geographic distribution of issues - larger circles indicate more reports</p>
+          <div className="hotspot-map-container">
+            <div ref={mapContainerRef} className="analytics-map">
+              {areas.length === 0 && (
+                <div className="map-no-data-overlay">
+                  <p>No location data available yet</p>
+                  <p className="map-hint">Issues with GPS coordinates will appear here</p>
+                </div>
+              )}
+            </div>
+            <div className="map-legend">
+              <h4>Legend</h4>
+              <div className="legend-items">
+                <div className="legend-item-row">
+                  <span className="legend-circle low-resolution"></span>
+                  <span>Low resolution rate (&lt;40%)</span>
+                </div>
+                <div className="legend-item-row">
+                  <span className="legend-circle medium-resolution"></span>
+                  <span>Medium resolution rate (40-70%)</span>
+                </div>
+                <div className="legend-item-row">
+                  <span className="legend-circle high-resolution"></span>
+                  <span>High resolution rate (&gt;70%)</span>
+                </div>
+                <div className="legend-note">Circle size indicates number of issues</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Top Areas List */}
+        <section className="chart-section areas-section">
+          <h2>Top Hot Spots</h2>
           {areas.length > 0 ? (
             <div className="areas-list">
               {areas.slice(0, 10).map((area, index) => (
