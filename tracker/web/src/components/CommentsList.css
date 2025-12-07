@@ -8,16 +8,18 @@
 .comments-empty {
   padding: 2rem;
   text-align: center;
-  background-color: #f7fafc;
-  border-radius: 8px;
-  color: #718096;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
 }
 
 .comment {
   padding: 1rem;
-  background-color: #f7fafc;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  animation: fadeInUp 0.3s ease-out backwards;
 }
 
 .comment-header {
@@ -31,7 +33,7 @@
 
 .comment-author {
   font-weight: 600;
-  color: #2d3748;
+  color: var(--color-text-primary);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -39,45 +41,21 @@
 
 .admin-badge {
   font-size: 0.7rem;
-  background-color: #805ad5;
+  background-color: var(--color-secondary);
   color: white;
   padding: 0.15rem 0.4rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-weight: 500;
 }
 
 .comment-date {
   font-size: 0.8rem;
-  color: #a0aec0;
+  color: var(--color-gray-400);
 }
 
 .comment-body {
   margin: 0;
-  color: #4a5568;
+  color: var(--color-text-secondary);
   line-height: 1.6;
   white-space: pre-wrap;
-}
-
-@media (prefers-color-scheme: dark) {
-  .comments-empty {
-    background-color: #2d3748;
-    color: #a0aec0;
-  }
-
-  .comment {
-    background-color: #2d3748;
-    border-color: #4a5568;
-  }
-
-  .comment-author {
-    color: #e2e8f0;
-  }
-
-  .comment-date {
-    color: #718096;
-  }
-
-  .comment-body {
-    color: #cbd5e0;
-  }
 }

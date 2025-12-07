@@ -11,22 +11,25 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--color-border);
   border-radius: 20px;
-  background-color: #f7fafc;
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
   font-size: 1rem;
 }
 
 .upvote-btn:hover:not(:disabled) {
-  border-color: #646cff;
-  background-color: #eef2ff;
+  border-color: var(--color-primary);
+  background-color: var(--color-gray-100);
+  transform: none;
+  box-shadow: none;
 }
 
 .upvote-btn.voted {
-  border-color: #646cff;
-  background-color: #646cff;
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
   color: white;
 }
 
@@ -49,23 +52,5 @@
 
 .upvote-error {
   font-size: 0.75rem;
-  color: #e53e3e;
-}
-
-@media (prefers-color-scheme: dark) {
-  .upvote-btn {
-    background-color: #2d3748;
-    border-color: #4a5568;
-    color: #e2e8f0;
-  }
-
-  .upvote-btn:hover:not(:disabled) {
-    background-color: #4a5568;
-    border-color: #646cff;
-  }
-
-  .upvote-btn.voted {
-    background-color: #646cff;
-    border-color: #646cff;
-  }
+  color: var(--color-danger);
 }
