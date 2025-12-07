@@ -36,6 +36,7 @@ model User {
   comments      Comment[]
   upvotes       IssueUpvote[]
   notifications Notification[]
+  passwordResets PasswordReset[]
 }
 
 
@@ -130,4 +131,19 @@ model Notification {
   
   @@index([userId, read])
   @@index([userId, createdAt])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([token])
+  @@index([userId, used])
 }
