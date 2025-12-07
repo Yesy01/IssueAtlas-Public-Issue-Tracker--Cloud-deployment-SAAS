@@ -1,37 +1,47 @@
+// src/App.tsx
 import { useEffect, useState } from "react";
-import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { api } from "./lib/api";
-import { clearToken, getToken } from "./lib/auth";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Link,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+
 import type { User } from "./types";
-import { AuthPage } from "./pages/AuthPage";
-import { MapPage } from "./pages/MapPage";
-import { ReportPage } from "./pages/ReportPage";
-import { AdminPage } from "./pages/AdminPage";
+import { fetchCurrentUser, clearToken, getToken } from "./lib/auth";
 
-export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const location = useLocation();
 
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    api
-      .get<{ user: User }>("/auth/me")
-      .then((res) => setUser(res.data.user))
-      .catch(() => {
-        clearToken();
-        setUser(null);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+import MapPage from "./pages/MapPage";
+import ReportPage from "./pages/ReportPage";
+import AdminPage from "./pages/AdminPage";
+import AuthPage from "./pages/AuthPage";
 
-  if (loading) {
-    return <div style={{ padding: "1rem" }}>Loading...</div>;
+import "./App.css";
+
+
+useEffect(() => {
+  const token = getToken();
+  if (!token) {
+    setUser(null);
+    setChecking(false);
+    return;
   }
+
+  fetchCurrentUser()
+    .then((u) => setUser(u))
+    .catch(() => setUser(null))
+    .finally(() => setChecking(false));
+}, []);
+
+interface LayoutProps {
+  user: User | null;
+  setUser: (u: User | null) => void;
+}
+
+function Layout({ user, setUser }: LayoutProps) {
+  const location = useLocation();
 
   const handleLogout = () => {
     clearToken();
@@ -39,39 +49,49 @@ export default function App() {
   };
 
   return (
-    <div>
-      <header
-        style={{
-          padding: "0.75rem 1rem",
-          borderBottom: "1px solid #ddd",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <nav style={{ display: "flex", gap: "1rem" }}>
-          <Link to="/">Map</Link>
-          <Link to="/report">Report</Link>
-          <Link to="/admin">Admin</Link>
+    <div className="app-root">
+      <header className="app-header">
+        <nav className="nav-bar">
+          <div className="nav-left">
+            <span className="logo">Issues Tracker</span>
+            <Link to="/" className="nav-link">
+              Map
+            </Link>
+            <Link to="/report" className="nav-link">
+              Report
+            </Link>
+            {user?.role === "admin" && (
+              <Link to="/admin" className="nav-link">
+                Admin
+              </Link>
+            )}
+          </div>
+          <div className="nav-right">
+            {user ? (
+              <>
+                <span className="nav-user">
+                  {user.email} ({user.role})
+                </span>
+                <button className="nav-button" onClick={handleLogout}>
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/auth"
+                state={{ from: location.pathname }}
+                className="nav-link"
+              >
+                Login / Register
+              </Link>
+            )}
+          </div>
         </nav>
-        <div>
-          {user ? (
-            <span style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-              <span>
-                {user.email} ({user.role})
-              </span>
-              <button onClick={handleLogout}>Logout</button>
-            </span>
-          ) : (
-            location.pathname !== "/auth" && <Link to="/auth">Login / Register</Link>
-          )}
-        </div>
       </header>
 
-      <main style={{ padding: "1rem" }}>
+      <main className="app-main">
         <Routes>
           <Route path="/" element={<MapPage user={user} />} />
-          <Route path="/auth" element={<AuthPage onAuth={setUser} />} />
           <Route
             path="/report"
             element={
@@ -85,15 +105,45 @@ export default function App() {
           <Route
             path="/admin"
             element={
-              user?.role === "admin" ? (
+              user && user.role === "admin" ? (
                 <AdminPage user={user} />
               ) : (
                 <Navigate to="/" replace />
               )
             }
           />
+          <Route path="/auth" element={<AuthPage setUser={setUser} />} />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [bootstrapped, setBootstrapped] = useState(false);
+
+  useEffect(() => {
+    fetchCurrentUser()
+      .then((u) => {
+        setUser(u);
+      })
+      .finally(() => setBootstrapped(true));
+  }, []);
+
+  if (!bootstrapped) {
+    return (
+      <div className="app-root">
+        <div className="boot-splash">Loading…</div>
+      </div>
+    );
+  }
+
+  return (
+    <BrowserRouter>
+      <Layout user={user} setUser={setUser} />
+    </BrowserRouter>
   );
 }

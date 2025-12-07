@@ -168,3 +168,4 @@ function statusColor(status: IssueStatus): string {
       return "gray";
   }
 }
+export default MapPage;

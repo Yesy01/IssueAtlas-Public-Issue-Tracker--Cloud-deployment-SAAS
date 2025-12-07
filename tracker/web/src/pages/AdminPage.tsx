@@ -81,3 +81,4 @@ export function AdminPage({ user }: AdminPageProps) {
     </div>
   );
 }
+export default AdminPage;

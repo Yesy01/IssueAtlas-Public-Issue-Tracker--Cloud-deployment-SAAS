@@ -1,42 +1,410 @@
-#root {
-  max-width: 1280px;
+/* src/App.css */
+
+/* Global ------------------------------------------------------------------ */
+
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", sans-serif;
+  background-color: #09090b;
+  color: #f9fafb;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: #09090b;
+  color: #f9fafb;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* App shell --------------------------------------------------------------- */
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at top left, #111827, #020617 50%, #030712);
+}
+
+.app-header {
+  height: 56px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  backdrop-filter: blur(16px);
+  background: linear-gradient(
+    to bottom,
+    rgba(15, 23, 42, 0.9),
+    rgba(15, 23, 42, 0.7),
+    transparent
+  );
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.nav-left,
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-left a,
+.nav-right a {
+  font-size: 0.95rem;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #e5e7eb;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.nav-left a:hover,
+.nav-right a:hover {
+  background-color: rgba(148, 163, 184, 0.18);
+}
+
+.nav-left a.active,
+.nav-right a.active {
+  background-color: #4f46e5;
+  color: #f9fafb;
+}
+
+/* User pill / auth state -------------------------------------------------- */
+
+.user-pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.16);
+  border: 1px solid rgba(34, 197, 163, 0.35);
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.role-tag {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.link-button {
+  border: none;
+  background: none;
+  color: #e5e7eb;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 999px;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.link-button:hover {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+/* Main content ------------------------------------------------------------ */
+
+.app-main {
+  flex: 1;
+  padding: 24px 32px 32px;
+}
+
+.page {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Map layout -------------------------------------------------------------- */
+
+.map-page .map-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2.2fr);
+  gap: 24px;
+  align-items: flex-start;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
+.map-page .map-container {
+  height: 480px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(30, 64, 175, 0.55);
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Sidebar / issues list --------------------------------------------------- */
+
+.card {
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.85);
+}
+
+.map-page .sidebar {
+  padding: 18px 18px 14px;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.sidebar-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.sidebar-subtitle {
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filters-row select,
+.filters-row input[type="text"] {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(75, 85, 99, 0.9);
+  background: rgba(15, 23, 42, 0.8);
+  color: #e5e7eb;
+  font-size: 0.8rem;
+}
+
+.filters-row input[type="text"]::placeholder {
+  color: #6b7280;
+}
+
+.issue-list {
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.issue-item {
+  padding: 10px 10px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(55, 65, 81, 0.7);
+  margin-bottom: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.issue-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.issue-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(75, 85, 99, 0.8);
+}
+
+.badge-status-new {
+  border-color: rgba(248, 250, 252, 0.6);
+}
+
+.badge-status-triaged {
+  border-color: rgba(234, 179, 8, 0.75);
+}
+
+.badge-status-in_progress {
+  border-color: rgba(59, 130, 246, 0.8);
+}
+
+.badge-status-resolved {
+  border-color: rgba(34, 197, 94, 0.85);
+}
+
+/* Auth page --------------------------------------------------------------- */
+
+.auth-page {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.auth-card {
+  width: 360px;
+  padding: 22px 22px 18px;
+  margin-top: 16px;
+}
+
+.auth-card h1 {
+  font-size: 1.3rem;
+  margin: 0 0 12px;
+}
+
+.auth-tabs {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 3px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(55, 65, 81, 0.9);
+  margin-bottom: 14px;
+}
+
+.auth-tabs button {
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.auth-tabs button.active {
+  background: #4f46e5;
+  color: #f9fafb;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+
+.field span {
+  color: #e5e7eb;
+}
+
+.field input {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(75, 85, 99, 0.9);
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  font-size: 0.85rem;
+}
+
+.field input:focus {
+  outline: 1px solid #4f46e5;
+  border-color: #4f46e5;
+}
+
+.primary-btn {
+  margin-top: 4px;
+  padding: 8px 0;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(to right, #4f46e5, #0ea5e9);
+  color: #f9fafb;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.primary-btn:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+
+.auth-error {
+  font-size: 0.8rem;
+  color: #f97373;
+}
+
+.auth-hint {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+/* Loading ----------------------------------------------------------------- */
+
+.app-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #e5e7eb;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(148, 163, 184, 0.4);
+  border-top-color: #6366f1;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+/* Mobile-ish -------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .app-main {
+    padding: 16px;
   }
-}
 
-.card {
-  padding: 2em;
-}
+  .map-page .map-layout {
+    grid-template-columns: 1fr;
+  }
 
-.read-the-docs {
-  color: #888;
+  .map-page .map-container {
+    height: 320px;
+  }
 }

@@ -1,5 +1,6 @@
 // src/pages/ReportPage.tsx
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import L, { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../lib/api";
@@ -194,3 +195,4 @@ export function ReportPage({ user }: ReportPageProps) {
     </div>
   );
 }
+export default ReportPage;

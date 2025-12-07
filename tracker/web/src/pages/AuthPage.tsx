@@ -1,97 +1,98 @@
 // src/pages/AuthPage.tsx
-import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { api } from "../lib/api";
-import { setToken } from "../lib/auth";
-import type { User } from "../types";
+import { useState, type FormEvent } from "react";
+import {
+  login,
+  register,
+  clearToken,
+  type User,
+} from "../lib/auth";
 
-interface AuthResponse {
-  token: string;
-  user: User;
-}
+type AuthPageProps = {
+  setUser: (user: User | null) => void;
+};
 
-interface AuthPageProps {
-  onAuth(user: User): void;
-}
-
-export function AuthPage({ onAuth }: AuthPageProps) {
+export default function AuthPage({ setUser }: AuthPageProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setLoading(true);
     try {
-      const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
-      const res = await api.post<AuthResponse>(endpoint, { email, password });
-      setToken(res.data.token);
-      onAuth(res.data.user);
-      navigate("/");
-    } catch (err: any) {
-      const msg = err?.response?.data?.error ?? "Auth failed";
-      setError(msg);
+      const user =
+        mode === "login"
+          ? await login(email, password)
+          : await register(email, password);
+
+      setUser(user);
+    } catch (err) {
+      console.error(err);
+      setError("Auth failed");
+      clearToken();
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: "0 auto" }}>
-      <h2>{mode === "login" ? "Login" : "Register"}</h2>
-      <div style={{ marginBottom: "1rem" }}>
-        <button
-          type="button"
-          onClick={() => setMode("login")}
-          disabled={mode === "login"}
-        >
-          Login
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("register")}
-          disabled={mode === "register"}
-          style={{ marginLeft: "0.5rem" }}
-        >
-          Register
-        </button>
-      </div>
+    <div className="page auth-page">
+      <div className="panel">
+        <h2>Login</h2>
 
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: "0.5rem" }}>
-          <label>
-            Email
+        <div className="tabs">
+          <button
+            type="button"
+            className={mode === "login" ? "tab active" : "tab"}
+            onClick={() => setMode("login")}
+          >
+            Login
+          </button>
+          <button
+            type="button"
+            className={mode === "register" ? "tab active" : "tab"}
+            onClick={() => setMode("register")}
+          >
+            Register
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <label className="field">
+            <span>Email</span>
             <input
               type="email"
-              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={{ display: "block", width: "100%" }}
+              required
+              autoComplete="email"
             />
           </label>
-        </div>
-        <div style={{ marginBottom: "0.5rem" }}>
-          <label>
-            Password
+
+          <label className="field">
+            <span>Password</span>
             <input
               type="password"
-              required
-              minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{ display: "block", width: "100%" }}
+              required
+              autoComplete={
+                mode === "login" ? "current-password" : "new-password"
+              }
             />
           </label>
-        </div>
 
-        {error && (
-          <div style={{ color: "red", marginBottom: "0.5rem" }}>{error}</div>
-        )}
+          {error && <div className="error">{error}</div>}
 
-        <button type="submit">
-          {mode === "login" ? "Login" : "Register"}
-        </button>
-      </form>
+          <button type="submit" disabled={loading}>
+            {loading ? "Working..." : mode === "login" ? "Login" : "Register"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
