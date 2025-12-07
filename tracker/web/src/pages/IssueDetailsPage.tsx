@@ -69,13 +69,56 @@ export function IssueDetailsPage({ user: _user }: IssueDetailsPageProps) {
       scrollWheelZoom: false,
     }).setView([issue.lat, issue.lon], 15);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap",
-    }).addTo(map);
+    // Determine theme for tiles
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const tileUrl = isDark 
+      ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+      : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+    
+    const attribution = isDark
+      ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+      : "© OpenStreetMap";
+
+    L.tileLayer(tileUrl, { attribution }).addTo(map);
 
     L.marker([issue.lat, issue.lon]).addTo(map);
 
+    // Fix loading buffer issue
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
+    // Update tiles when theme changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          const tileUrl = isDark 
+            ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+          
+          const attribution = isDark
+            ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+            : "© OpenStreetMap";
+
+          map.eachLayer((layer: L.Layer) => {
+            if (layer instanceof L.TileLayer) {
+              map.removeLayer(layer);
+            }
+          });
+          
+          L.tileLayer(tileUrl, { attribution }).addTo(map);
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+
     return () => {
+      observer.disconnect();
       map.remove();
     };
   }, [issue]);

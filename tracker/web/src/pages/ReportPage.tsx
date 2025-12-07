@@ -4,6 +4,7 @@ import L, { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../lib/api";
 import type { Issue, IssueType, User } from "../types";
+import "./ReportPage.css";
 
 interface ReportPageProps {
   user: User;
@@ -25,14 +26,27 @@ export function ReportPage({ user }: ReportPageProps) {
   const mapRef = useRef<LeafletMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   useEffect(() => {
     if (mapRef.current || !mapContainerRef.current) return;
 
     const map = L.map(mapContainerRef.current).setView([20, 78], 4);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
-    }).addTo(map);
+    
+    // Determine initial theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const tileUrl = isDark 
+      ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+      : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+    
+    const attribution = isDark
+      ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+      : "© OpenStreetMap contributors";
+
+    const tileLayer = L.tileLayer(tileUrl, { attribution });
+    tileLayer.addTo(map);
+    tileLayerRef.current = tileLayer;
 
     map.on("click", (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
@@ -47,6 +61,47 @@ export function ReportPage({ user }: ReportPageProps) {
     });
 
     mapRef.current = map;
+
+    // Fix loading buffer issue
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
+    // Update tiles when theme changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          const tileUrl = isDark 
+            ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+          
+          const attribution = isDark
+            ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+            : "© OpenStreetMap contributors";
+
+          if (tileLayerRef.current && mapRef.current) {
+            mapRef.current.removeLayer(tileLayerRef.current);
+            const newTileLayer = L.tileLayer(tileUrl, { attribution });
+            newTileLayer.addTo(mapRef.current);
+            tileLayerRef.current = newTileLayer;
+          }
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+
+    return () => {
+      observer.disconnect();
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
   }, []);
 
   async function handleSubmit(e: FormEvent) {
@@ -55,7 +110,7 @@ export function ReportPage({ user }: ReportPageProps) {
     setMessage(null);
 
     if (lat == null || lon == null) {
-      setError("Click on the map to choose a location.");
+      setError("Please click on the map to choose a location for the issue.");
       return;
     }
 
@@ -83,113 +138,264 @@ export function ReportPage({ user }: ReportPageProps) {
         imageUrl,
       });
 
-      setMessage(`Issue created with id ${res.data.issue.id}`);
+      setMessage(`Issue reported successfully! Issue ID: ${res.data.issue.id}`);
+      
+      // Reset form
       setTitle("");
       setDescription("");
+      setType("pothole");
       setAddress("");
       setAreaName("");
       setFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      if (markerRef.current && mapRef.current) {
+        mapRef.current.removeLayer(markerRef.current);
+        markerRef.current = null;
+        setLat(null);
+        setLon(null);
+      }
+
+      // Scroll to top to show success message
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error(err);
-      const msg = err?.response?.data?.error ?? "Failed to create issue";
+      const msg = err?.response?.data?.error ?? "Failed to create issue. Please try again.";
       setError(msg);
     } finally {
       setSubmitting(false);
     }
   }
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      // Validate file size (max 5MB)
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        setError("Image size must be less than 5MB");
+        return;
+      }
+      setFile(selectedFile);
+    }
+  };
+
+  const removeFile = () => {
+    setFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "1rem" }}>
-      <div>
-        <h2>Report an issue</h2>
-        <form onSubmit={handleSubmit}>
-          <div>
-            <label>
-              Title
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                style={{ display: "block", width: "100%" }}
-              />
-            </label>
+    <div className="report-page">
+      <header className="report-header">
+        <h1 className="report-title">Report an Issue</h1>
+        <p className="report-subtitle">
+          Help improve your community by reporting infrastructure problems
+        </p>
+      </header>
+
+      <div className="report-content">
+        <div className="report-form-section">
+          <div className="report-form-card">
+            {error && (
+              <div className="form-message error">
+                <span className="form-message-icon">⚠️</span>
+                <span>{error}</span>
+              </div>
+            )}
+
+            {message && (
+              <div className="form-message success">
+                <span className="form-message-icon">✓</span>
+                <span>{message}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="report-form">
+              <div>
+                <h3 className="form-section-title">
+                  <span className="form-section-icon">📝</span>
+                  Issue Details
+                </h3>
+                <div className="form-grid">
+                  <div className="form-field">
+                    <label htmlFor="title">
+                      Title <span className="required-indicator">*</span>
+                    </label>
+                    <input
+                      id="title"
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required
+                      placeholder="Brief description of the issue"
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label htmlFor="description">
+                      Description <span className="required-indicator">*</span>
+                    </label>
+                    <textarea
+                      id="description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      required
+                      placeholder="Provide detailed information about the issue"
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label htmlFor="type">
+                      Issue Type <span className="required-indicator">*</span>
+                    </label>
+                    <select
+                      id="type"
+                      value={type}
+                      onChange={(e) => setType(e.target.value as IssueType)}
+                    >
+                      <option value="pothole">Pothole</option>
+                      <option value="streetlight">Streetlight</option>
+                      <option value="drainage">Drainage</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="form-section-title">
+                  <span className="form-section-icon">📍</span>
+                  Location Information
+                </h3>
+                <div className="form-grid form-grid-2">
+                  <div className="form-field">
+                    <label htmlFor="address">Address</label>
+                    <input
+                      id="address"
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Street address (optional)"
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label htmlFor="areaName">Area Name</label>
+                    <input
+                      id="areaName"
+                      type="text"
+                      value={areaName}
+                      onChange={(e) => setAreaName(e.target.value)}
+                      placeholder="Neighborhood or locality (optional)"
+                    />
+                  </div>
+                </div>
+
+                <div className="location-info">
+                  <span className="location-label">
+                    Selected Coordinates:
+                  </span>
+                  <div className="location-coords">
+                    {lat != null && lon != null
+                      ? `${lat.toFixed(6)}, ${lon.toFixed(6)}`
+                      : "Not selected"}
+                  </div>
+                  <p className="location-instruction">
+                    💡 Click on the map to select the exact location
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="form-section-title">
+                  <span className="form-section-icon">📷</span>
+                  Photo Evidence
+                </h3>
+                <div className="form-field">
+                  <label htmlFor="image">Upload Image</label>
+                  <div className="file-input-wrapper">
+                    <input
+                      ref={fileInputRef}
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="file-input"
+                    />
+                    <label htmlFor="image" className="file-input-button">
+                      📁 {file ? "Change Image" : "Choose Image (Max 5MB)"}
+                    </label>
+                  </div>
+                  {file && (
+                    <div className="file-preview">
+                      <span className="file-name">
+                        📷 {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={removeFile}
+                        className="remove-file-btn"
+                      >
+                        ✕ Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button type="submit" disabled={submitting} className="submit-btn">
+                  {submitting ? (
+                    <>
+                      <span className="submit-spinner"></span>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      📨 Submit Report
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="user-info-badge">
+                <span className="user-info-icon">👤</span>
+                Reporting as <span className="user-info-email">{user.email}</span>
+              </div>
+            </form>
           </div>
-          <div>
-            <label>
-              Description
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                required
-                rows={4}
-                style={{ display: "block", width: "100%" }}
-              />
-            </label>
-          </div>
-          <div>
-            <label>
-              Type
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as IssueType)}
-              >
-                <option value="pothole">Pothole</option>
-                <option value="streetlight">Streetlight</option>
-                <option value="drainage">Drainage</option>
-                <option value="other">Other</option>
-              </select>
-            </label>
-          </div>
-          <div>
-            <label>
-              Address (optional)
-              <input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                style={{ display: "block", width: "100%" }}
-              />
-            </label>
-          </div>
-          <div>
-            <label>
-              Area name (optional)
-              <input
-                value={areaName}
-                onChange={(e) => setAreaName(e.target.value)}
-                style={{ display: "block", width: "100%" }}
-              />
-            </label>
-          </div>
-          <div>
-            <label>
-              Image (optional)
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
-            </label>
-          </div>
-          <div style={{ margin: "0.5rem 0" }}>
-            <strong>Location:</strong>{" "}
-            {lat && lon ? `${lat.toFixed(5)}, ${lon.toFixed(5)}` : "click on map"}
-          </div>
-          {error && <div style={{ color: "red" }}>{error}</div>}
-          {message && <div style={{ color: "green" }}>{message}</div>}
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Submitting..." : "Submit issue"}
-          </button>
-        </form>
-        <div style={{ marginTop: "0.5rem" }}>
-          Reporting as <strong>{user.email}</strong>
         </div>
-      </div>
-      <div>
-        <h3>Choose location</h3>
-        <div
-          ref={mapContainerRef}
-          style={{ height: "400px", border: "1px solid #ccc" }}
-        />
+
+        <div className="report-map-section">
+          <div className="report-map-card">
+            <div className="map-section-header">
+              <h3 className="map-section-title">
+                <span className="form-section-icon">🗺️</span>
+                Select Location
+              </h3>
+              <p className="map-section-description">
+                Click on the map to mark the exact location of the issue
+              </p>
+            </div>
+
+            <div className="map-wrapper">
+              <div ref={mapContainerRef} className="report-map-container"></div>
+            </div>
+
+            <div className="map-tips">
+              <h4 className="map-tips-title">Tips for accurate reporting:</h4>
+              <ul className="map-tips-list">
+                <li>Zoom in for precise location marking</li>
+                <li>Click directly on the issue location</li>
+                <li>You can adjust by clicking a new location</li>
+                <li>The marker shows your selected spot</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
