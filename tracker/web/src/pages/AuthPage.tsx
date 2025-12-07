@@ -133,6 +133,22 @@ export function AuthPage({ onAuth }: AuthPageProps) {
             )}
           </button>
         </form>
+
+        <div className="guest-access-section">
+          <div className="divider">
+            <span className="divider-text">OR</span>
+          </div>
+          <p className="guest-access-text">
+            Want to report an issue without creating an account?
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate("/guest-report")}
+            className="guest-access-btn"
+          >
+            🚀 Continue as Guest
+          </button>
+        </div>
       </div>
     </div>
   );

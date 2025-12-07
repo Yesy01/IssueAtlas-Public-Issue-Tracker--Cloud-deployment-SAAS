@@ -6,6 +6,7 @@ import type { User } from "./types";
 import { AuthPage } from "./pages/AuthPage";
 import { MapPage } from "./pages/MapPage";
 import { ReportPage } from "./pages/ReportPage";
+import { GuestReportPage } from "./pages/GuestReportPage";
 import { AdminPage } from "./pages/AdminPage";
 import { IssueDetailsPage } from "./pages/IssueDetailsPage";
 import MyIssuesPage from "./pages/MyIssuesPage";
@@ -221,6 +222,7 @@ export default function App() {
           <Route path="/my-issues" element={<MyIssuesPage user={user} />} />
           <Route path="/analytics" element={<AnalyticsPage user={user} />} />
           <Route path="/auth" element={<AuthPage onAuth={setUser} />} />
+          <Route path="/guest-report" element={<GuestReportPage />} />
           <Route
             path="/report"
             element={
