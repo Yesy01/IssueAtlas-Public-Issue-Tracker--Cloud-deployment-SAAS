@@ -136,4 +136,23 @@ router.get("/me", authGuard, async (req: Request, res: Response) => {
   return res.json({ user });
 });
 
+/**
+ * POST /api/auth/guest
+ *
+ * - Creates a temporary guest token for anonymous issue submission
+ * - Guest can only create issues, not view/comment/upvote
+ */
+router.post("/guest", async (req: Request, res: Response) => {
+  // Create a temporary guest identifier
+  const guestId = `guest_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  
+  // Sign a token with limited permissions (no real user ID)
+  const token = signAccessToken({ userId: guestId, role: "guest" });
+
+  return res.status(200).json({
+    token,
+    message: "Guest access granted. You can submit issues but have limited access to other features.",
+  });
+});
+
 export default router;

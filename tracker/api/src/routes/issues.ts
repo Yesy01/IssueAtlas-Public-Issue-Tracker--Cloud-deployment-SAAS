@@ -19,7 +19,7 @@ const router = Router();
 
 /**
  * POST /api/issues
- * Auth: required (any logged-in user)
+ * Auth: required (any logged-in user or guest)
  */
 router.post("/", authGuard, async (req: Request, res: Response) => {
   const parseResult = IssueCreateSchema.safeParse(req.body);
@@ -37,9 +37,37 @@ router.post("/", authGuard, async (req: Request, res: Response) => {
   const data = parseResult.data;
 
   try {
+    // For guest users, use a placeholder reporter or null
+    // Guest IDs start with "guest_" and aren't in the database
+    const isGuest = req.user.role === "guest" || req.user.id.startsWith("guest_");
+    
+    let reporterId: number;
+    
+    if (isGuest) {
+      // Find or create a special "guest" user for anonymous submissions
+      let guestUser = await prisma.user.findFirst({
+        where: { email: "guest@system.local" },
+      });
+      
+      if (!guestUser) {
+        // Create a system guest user if it doesn't exist
+        guestUser = await prisma.user.create({
+          data: {
+            email: "guest@system.local",
+            password: "", // No password for system user
+            role: "user",
+          },
+        });
+      }
+      
+      reporterId = guestUser.id;
+    } else {
+      reporterId = req.user.id;
+    }
+
     const issue = await prisma.issue.create({
       data: {
-        reporterId: req.user.id,
+        reporterId,
         title: data.title,
         description: data.description,
         type: data.type,
