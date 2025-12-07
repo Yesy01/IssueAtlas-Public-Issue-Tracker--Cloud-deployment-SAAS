@@ -58,6 +58,9 @@ model Issue {
   address       String?
   areaName      String?
 
+  adminResponse String?
+  adminRespondedAt DateTime?
+
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
