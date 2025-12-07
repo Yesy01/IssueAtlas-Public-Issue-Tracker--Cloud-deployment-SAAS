@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { prisma } from "../lib/prisma.js";
-import { authGuard } from "../middleware/authGuard.js";
+import { prisma } from "../lib/prisma";
+import { authGuard } from "../middleware/authGuard";
 
 const router = Router();
 
@@ -122,8 +122,8 @@ router.get("/areas", async (_req: Request, res: Response, next: NextFunction) =>
     // Get all issues with location
     const issues = await prisma.issue.findMany({
       select: {
-        latitude: true,
-        longitude: true,
+        lat: true,
+        lon: true,
         status: true
       }
     });
@@ -133,9 +133,9 @@ router.get("/areas", async (_req: Request, res: Response, next: NextFunction) =>
     const gridSize = 0.01; // Approximately 1km
     const areas: Record<string, { lat: number; lng: number; count: number; resolved: number }> = {};
 
-    issues.forEach((issue: { latitude: number; longitude: number; status: string }) => {
-      const gridLat = Math.floor(issue.latitude / gridSize) * gridSize;
-      const gridLng = Math.floor(issue.longitude / gridSize) * gridSize;
+    issues.forEach((issue: { lat: number; lon: number; status: string }) => {
+      const gridLat = Math.floor(issue.lat / gridSize) * gridSize;
+      const gridLng = Math.floor(issue.lon / gridSize) * gridSize;
       const key = `${gridLat.toFixed(3)},${gridLng.toFixed(3)}`;
       
       if (!areas[key]) {

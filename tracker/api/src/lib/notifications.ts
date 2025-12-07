@@ -1,4 +1,4 @@
-import { prisma } from "./prisma.js";
+import { prisma } from "./prisma";
 
 type NotificationType = "status_change" | "new_comment" | "issue_resolved" | "issue_upvoted";
 

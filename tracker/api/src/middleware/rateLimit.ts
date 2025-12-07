@@ -69,25 +69,25 @@ export function createRateLimiter(options: RateLimitOptions) {
 
 // Pre-configured limiters
 export const generalLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per 15 minutes
+  windowMs: 10 * 1000, // 10 seconds
+  max: 100, // 100 requests per 10 seconds
   message: "Too many requests, please try again later",
 });
 
 export const authLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 auth attempts per 15 minutes
-  message: "Too many authentication attempts, please try again later",
+  windowMs: 5 * 1000, // 5 seconds
+  max: 20, // 20 auth attempts per 5 seconds
+  message: "Too many authentication attempts, please try again in a moment",
 });
 
 export const uploadLimiter = createRateLimiter({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // 20 uploads per hour
+  windowMs: 10 * 1000, // 10 seconds
+  max: 20, // 20 uploads per 10 seconds
   message: "Upload limit exceeded, please try again later",
 });
 
 export const strictLimiter = createRateLimiter({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10, // 10 requests per minute
+  windowMs: 5 * 1000, // 5 seconds
+  max: 50, // 50 requests per 5 seconds
   message: "Too many requests, please slow down",
 });

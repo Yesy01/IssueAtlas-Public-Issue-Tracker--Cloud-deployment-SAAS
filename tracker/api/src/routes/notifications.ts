@@ -1,11 +1,11 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { authGuard } from "../middleware/authGuard.js";
+import { authGuard } from "../middleware/authGuard";
 import {
   getUserNotifications,
   getUnreadCount,
   markAsRead,
   markAllAsRead,
-} from "../lib/notifications.js";
+} from "../lib/notifications";
 
 const router = Router();
 
