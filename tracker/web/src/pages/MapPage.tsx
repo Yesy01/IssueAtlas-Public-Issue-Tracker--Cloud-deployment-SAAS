@@ -1,6 +1,6 @@
 // src/pages/MapPage.tsx
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import L, { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../lib/api";
@@ -19,16 +19,40 @@ export function MapPage({ user }: MapPageProps) {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const navigate = useNavigate();
   const mapRef = useRef<LeafletMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+
+  const escapeHtml = (value: string) =>
+    value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  const truncate = (value: string, limit = 140) => {
+    const normalized = value.replace(/\s+/g, " ").trim();
+    return normalized.length > limit
+      ? `${normalized.slice(0, limit - 1)}…`
+      : normalized;
+  };
+
+  const formatIssueType = (value: string) =>
+    value
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
 
   // Init map once
   useEffect(() => {
     if (mapRef.current || !mapContainerRef.current) return;
 
-    const map = L.map(mapContainerRef.current).setView([20, 78], 4); // rough India
+    const container = mapContainerRef.current;
+    const map = L.map(container).setView([20, 78], 4); // rough India
 
     // Determine initial theme
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -47,6 +71,14 @@ export function MapPage({ user }: MapPageProps) {
     markersRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
+    if (container && typeof ResizeObserver !== "undefined") {
+      const resizeObserver = new ResizeObserver(() => {
+        map.invalidateSize();
+      });
+      resizeObserver.observe(container);
+      resizeObserverRef.current = resizeObserver;
+    }
+
     // Fix loading buffer issue
     setTimeout(() => {
       map.invalidateSize();
@@ -54,6 +86,8 @@ export function MapPage({ user }: MapPageProps) {
 
     // Cleanup on unmount
     return () => {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -100,7 +134,7 @@ export function MapPage({ user }: MapPageProps) {
     async function fetchIssues() {
       setLoading(true);
       try {
-        const params: any = {};
+        const params: Record<string, string> = {};
         if (status) params.status = status;
         if (type) params.type = type;
         if (search) params.search = search;
@@ -126,17 +160,142 @@ export function MapPage({ user }: MapPageProps) {
     issues.forEach((issue) => {
       const color = STATUS_COLORS[issue.status];
       const marker = L.circleMarker([issue.lat, issue.lon], {
-        radius: 6,
+        radius: 8,
         color,
         fillColor: color,
         fillOpacity: 0.8,
-      }).bindPopup(
-        `<strong>${issue.title}</strong><br/>
-        Status: ${STATUS_LABELS[issue.status]}<br/>
-        Type: ${issue.type}<br/>
-        ${issue.areaName ? `Area: ${issue.areaName}<br/>` : ""}
-        <a href="/issues/${issue.id}" style="color: var(--color-primary);">View Details →</a>`
-      );
+        weight: 2,
+      });
+
+      const popupContent = `
+        <div class="map-issue-popup">
+          ${
+            issue.imageUrl
+              ? `<img src="${encodeURI(issue.imageUrl)}" alt="${escapeHtml(
+                  issue.title
+                )}" class="map-issue-popup-image" loading="lazy" />`
+              : ""
+          }
+          <div class="map-issue-popup-body">
+            <h3 class="map-issue-popup-title">${escapeHtml(issue.title)}</h3>
+            <div class="map-issue-popup-meta">
+              <span class="map-issue-popup-status" data-status="${issue.status}">${escapeHtml(
+                STATUS_LABELS[issue.status]
+              )}</span>
+              <span class="map-issue-popup-type">${escapeHtml(
+                formatIssueType(issue.type)
+              )}</span>
+              ${
+                issue.areaName
+                  ? `<span class="map-issue-popup-area">📍 ${escapeHtml(issue.areaName)}</span>`
+                  : ""
+              }
+            </div>
+            ${
+              issue.description
+                ? `<p class="map-issue-popup-description">${escapeHtml(
+                    truncate(issue.description)
+                  )}</p>`
+                : ""
+            }
+            <button type="button" class="issue-popup-button" data-issue-id="${issue.id}">
+              View Details
+            </button>
+          </div>
+        </div>
+      `;
+
+      marker.bindPopup(popupContent, {
+        className: "map-issue-popup-container",
+        closeButton: true,
+        maxWidth: 280,
+        offset: L.point(0, -10),
+      });
+
+      let closeTimeout: ReturnType<typeof window.setTimeout> | null = null;
+      let popupHovered = false;
+      let markerHovered = false;
+
+      const scheduleClose = () => {
+        if (closeTimeout) clearTimeout(closeTimeout);
+        closeTimeout = window.setTimeout(() => {
+          if (!popupHovered && !markerHovered) {
+            marker.closePopup();
+          }
+        }, 200);
+      };
+
+      const clearClose = () => {
+        if (closeTimeout) {
+          clearTimeout(closeTimeout);
+          closeTimeout = null;
+        }
+      };
+
+      marker.on("mouseover", () => {
+        markerHovered = true;
+        clearClose();
+        marker.openPopup();
+      });
+
+      marker.on("mouseout", () => {
+        markerHovered = false;
+        scheduleClose();
+      });
+
+      marker.on("click", () => {
+        markerHovered = true;
+        clearClose();
+        marker.openPopup();
+      });
+
+      marker.on("popupopen", () => {
+        const popupElement = marker.getPopup()?.getElement();
+        if (!popupElement) return;
+
+        const handlePopupMouseEnter = () => {
+          popupHovered = true;
+          clearClose();
+        };
+
+        const handlePopupMouseLeave = () => {
+          popupHovered = false;
+          scheduleClose();
+        };
+
+        popupElement.addEventListener("mouseenter", handlePopupMouseEnter);
+        popupElement.addEventListener("mouseleave", handlePopupMouseLeave);
+
+        const button = popupElement.querySelector<HTMLButtonElement>(
+          ".issue-popup-button"
+        );
+        
+        const handleButtonClick = (e: Event) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const issueId = (e.currentTarget as HTMLElement).getAttribute("data-issue-id");
+          if (issueId) {
+            navigate(`/issues/${issueId}`);
+          }
+        };
+
+        if (button) {
+          button.addEventListener("click", handleButtonClick);
+        }
+
+        L.DomEvent.disableClickPropagation(popupElement);
+
+        marker.once("popupclose", () => {
+          popupElement.removeEventListener("mouseenter", handlePopupMouseEnter);
+          popupElement.removeEventListener("mouseleave", handlePopupMouseLeave);
+          if (button) {
+            button.removeEventListener("click", handleButtonClick);
+          }
+          popupHovered = false;
+          clearClose();
+        });
+      });
+
       marker.addTo(group);
     });
 
@@ -144,7 +303,11 @@ export function MapPage({ user }: MapPageProps) {
       const bounds = L.latLngBounds(issues.map((i) => [i.lat, i.lon]));
       mapRef.current.fitBounds(bounds, { padding: [20, 20] });
     }
-  }, [issues]);
+
+    requestAnimationFrame(() => {
+      mapRef.current?.invalidateSize();
+    });
+  }, [issues, navigate]);
 
   return (
     <div className="map-page">
@@ -186,7 +349,7 @@ export function MapPage({ user }: MapPageProps) {
                     id="status-filter"
                     className="filter-select"
                     value={status}
-                    onChange={(e) => setStatus(e.target.value as any)}
+                    onChange={(e) => setStatus(e.target.value as IssueStatus | "")}
                   >
                     <option value="">All statuses</option>
                     <option value="new">New</option>
@@ -204,7 +367,7 @@ export function MapPage({ user }: MapPageProps) {
                     id="type-filter"
                     className="filter-select"
                     value={type}
-                    onChange={(e) => setType(e.target.value as any)}
+                    onChange={(e) => setType(e.target.value as IssueType | "")}
                   >
                     <option value="">All types</option>
                     <option value="pothole">Pothole</option>
