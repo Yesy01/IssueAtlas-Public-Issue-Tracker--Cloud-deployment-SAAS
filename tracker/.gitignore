@@ -3,3 +3,12 @@ api/dist
 api/prisma/.env
 docs/progress
 api/.env
+.env
+.env.local
+.env.production
+infra/nginx/ssl/
+backups/
+*.pem
+*.key
+*.crt
+*.csr
