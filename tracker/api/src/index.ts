@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+import helmet from "helmet";
 
 import authRouter from "./routes/auth";
 import issuesRouter from "./routes/issues";
@@ -11,11 +12,24 @@ import uploadsRoutes from "./routes/uploads";
 import { prisma } from './lib/prisma';
 import healthRouter from "./routes/health";
 import { generalLimiter, authLimiter, uploadLimiter } from "./middleware/rateLimit";
+import { xssProtection, cspHeaders } from "./middleware/security";
 
 
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+
+// Security headers with helmet
+app.use(helmet({
+  contentSecurityPolicy: false, // We'll use custom CSP
+  crossOriginEmbedderPolicy: false // Allow external resources
+}));
+
+// Custom security headers
+app.use(cspHeaders);
+
+// XSS protection middleware
+app.use(xssProtection);
 
 app.use(cors());
 app.use(express.json());
