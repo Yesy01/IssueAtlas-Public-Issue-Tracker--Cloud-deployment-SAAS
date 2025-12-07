@@ -30,7 +30,8 @@ export default function MyIssuesPage({ user }: MyIssuesPageProps) {
       setError(null);
       const response = await api.get('/issues');
       // Filter issues to only show those reported by the current user
-      const myIssues = response.data.issues.filter(
+      const allIssues = response.data.items || [];
+      const myIssues = allIssues.filter(
         (issue: Issue) => issue.reporterId === user?.id
       );
       setIssues(myIssues);
@@ -154,7 +155,7 @@ export default function MyIssuesPage({ user }: MyIssuesPageProps) {
       ) : (
         <div className="issues-list">
           {filteredIssues.map((issue) => (
-            <Link to={`/issue/${issue.id}`} key={issue.id} className="issue-card">
+            <Link to={`/issues/${issue.id}`} key={issue.id} className="issue-card">
               <div className="issue-card-header">
                 <span className="issue-type">{issue.type}</span>
                 <StatusBadge status={issue.status} />
@@ -171,7 +172,7 @@ export default function MyIssuesPage({ user }: MyIssuesPageProps) {
                 </span>
                 <div className="issue-stats">
                   <span className="stat">
-                    👍 {issue.upvotes}
+                    👍 {issue._count?.upvotes || 0}
                   </span>
                 </div>
               </div>

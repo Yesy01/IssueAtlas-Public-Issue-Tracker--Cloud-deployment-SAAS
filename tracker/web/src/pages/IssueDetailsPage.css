@@ -2,6 +2,8 @@
 .issue-details {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 1.5rem;
+  animation: fadeIn 0.3s ease-out;
 }
 
 .issue-details-loading,
@@ -19,22 +21,30 @@
 }
 
 .back-link {
-  color: #646cff;
+  color: var(--color-primary);
   text-decoration: none;
   font-weight: 500;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  transition: color var(--transition-fast);
 }
 
 .back-link:hover {
+  color: var(--color-primary-dark);
   text-decoration: underline;
 }
 
 .issue-details-content {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: 1fr 420px;
   gap: 2rem;
+}
+
+@media (max-width: 1100px) {
+  .issue-details-content {
+    grid-template-columns: 1fr 360px;
+  }
 }
 
 @media (max-width: 900px) {
@@ -65,7 +75,7 @@
   margin: 0;
   font-size: 1.75rem;
   line-height: 1.3;
-  color: #1a202c;
+  color: var(--color-text-primary);
 }
 
 .issue-meta {
@@ -74,7 +84,7 @@
   gap: 1rem;
   margin-bottom: 1.5rem;
   font-size: 0.9rem;
-  color: #4a5568;
+  color: var(--color-text-secondary);
 }
 
 .issue-meta span {
@@ -86,7 +96,7 @@
 .issue-description {
   font-size: 1rem;
   line-height: 1.7;
-  color: #2d3748;
+  color: var(--color-text-primary);
   white-space: pre-wrap;
   margin-bottom: 1.5rem;
 }
@@ -99,9 +109,9 @@
   max-width: 100%;
   max-height: 400px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity var(--transition-fast);
 }
 
 .issue-image:hover {
@@ -111,7 +121,7 @@
 .issue-image-hint {
   margin: 0.5rem 0 0 0;
   font-size: 0.8rem;
-  color: #a0aec0;
+  color: var(--color-gray-400);
 }
 
 .issue-actions {
@@ -120,12 +130,12 @@
   gap: 1.5rem;
   margin-bottom: 1.5rem;
   padding: 1rem 0;
-  border-top: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .comment-count {
-  color: #4a5568;
+  color: var(--color-text-secondary);
   font-size: 0.95rem;
 }
 
@@ -137,12 +147,12 @@
 .issue-comments-section h3 {
   margin: 0 0 1rem 0;
   font-size: 1.25rem;
-  color: #2d3748;
+  color: var(--color-text-primary);
 }
 
 .comments-divider {
   height: 1px;
-  background-color: #e2e8f0;
+  background-color: var(--color-border);
   margin: 1.5rem 0;
 }
 
@@ -156,21 +166,58 @@
 .issue-sidebar h4 {
   margin: 0 0 0.75rem 0;
   font-size: 0.9rem;
-  color: #718096;
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .issue-map-container {
-  background: #f7fafc;
-  border-radius: 8px;
-  padding: 1rem;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  padding: 1.25rem;
+  min-height: 200px;
 }
 
 .issue-mini-map {
-  height: 180px;
-  border-radius: 6px;
+  height: 200px;
+  min-height: 200px;
+  border-radius: var(--radius-md);
   overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 640px) {
+  .issue-map-container {
+    min-height: 240px;
+  }
+  
+  .issue-mini-map {
+    height: 240px;
+    min-height: 240px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .issue-map-container {
+    min-height: 280px;
+  }
+  
+  .issue-mini-map {
+    height: 280px;
+    min-height: 280px;
+  }
+}
+
+.issue-mini-map .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .issue-coordinates {
@@ -178,20 +225,21 @@
   justify-content: space-between;
   margin-top: 0.75rem;
   font-size: 0.8rem;
-  color: #718096;
+  color: var(--color-text-secondary);
   font-family: monospace;
 }
 
 .issue-reporter {
-  background: #f7fafc;
-  border-radius: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
   padding: 1rem;
 }
 
 .reporter-email {
   margin: 0;
   font-size: 0.95rem;
-  color: #2d3748;
+  color: var(--color-text-primary);
   word-break: break-all;
 }
 
@@ -199,86 +247,35 @@
   display: inline-block;
   margin-top: 0.5rem;
   font-size: 0.7rem;
-  background-color: #805ad5;
+  background-color: var(--color-secondary);
   color: white;
   padding: 0.15rem 0.4rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .issue-share {
-  background: #f7fafc;
-  border-radius: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
   padding: 1rem;
 }
 
 .share-button {
   width: 100%;
   padding: 0.6rem 1rem;
-  background-color: #edf2f7;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 0.9rem;
-  transition: all 0.2s;
+  color: var(--color-text-primary);
+  transition: all var(--transition-fast);
 }
 
 .share-button:hover {
-  background-color: #e2e8f0;
-  border-color: #cbd5e0;
+  background-color: var(--color-gray-100);
+  border-color: var(--color-gray-300);
+  transform: none;
+  box-shadow: none;
 }
 
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-  .issue-title {
-    color: #f7fafc;
-  }
-
-  .issue-meta {
-    color: #a0aec0;
-  }
-
-  .issue-description {
-    color: #e2e8f0;
-  }
-
-  .issue-actions {
-    border-color: #4a5568;
-  }
-
-  .comment-count {
-    color: #a0aec0;
-  }
-
-  .issue-comments-section h3 {
-    color: #e2e8f0;
-  }
-
-  .comments-divider {
-    background-color: #4a5568;
-  }
-
-  .issue-map-container,
-  .issue-reporter,
-  .issue-share {
-    background: #2d3748;
-  }
-
-  .issue-sidebar h4 {
-    color: #a0aec0;
-  }
-
-  .reporter-email {
-    color: #e2e8f0;
-  }
-
-  .share-button {
-    background-color: #4a5568;
-    border-color: #4a5568;
-    color: #e2e8f0;
-  }
-
-  .share-button:hover {
-    background-color: #5a6578;
-    border-color: #5a6578;
-  }
-}

@@ -212,22 +212,24 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
                   Resolved
                 </span>
               </div>
-              <div className="trend-bars">
-                {trends.map((day) => (
-                  <div key={day.date} className="trend-bar-group">
-                    <div 
-                      className="trend-bar new" 
-                      style={{ height: `${Math.max(day.new * 20, 4)}px` }}
-                      title={`New: ${day.new}`}
-                    />
-                    <div 
-                      className="trend-bar resolved" 
-                      style={{ height: `${Math.max(day.resolved * 20, 4)}px` }}
-                      title={`Resolved: ${day.resolved}`}
-                    />
-                    <span className="trend-date">{day.date.slice(5)}</span>
-                  </div>
-                ))}
+              <div className="trend-chart-wrapper">
+                <div className="trend-bars">
+                  {trends.map((day) => (
+                    <div key={day.date} className="trend-bar-group">
+                      <div 
+                        className="trend-bar new" 
+                        style={{ height: `${Math.max(day.new * 20, 4)}px` }}
+                        title={`New: ${day.new}`}
+                      />
+                      <div 
+                        className="trend-bar resolved" 
+                        style={{ height: `${Math.max(day.resolved * 20, 4)}px` }}
+                        title={`Resolved: ${day.resolved}`}
+                      />
+                      <span className="trend-date">{day.date.slice(5)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (
