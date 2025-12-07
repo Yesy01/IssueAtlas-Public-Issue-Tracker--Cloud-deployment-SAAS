@@ -1,0 +1,54 @@
+# compose.yaml - Production Configuration with Security Best Practices
+# This file should be used with environment variables from .env file
+# DO NOT commit secrets to version control
+
+services:
+  api:
+    build: ./api
+    container_name: issues-api
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      NODE_ENV: "${NODE_ENV:-development}"
+      
+      # Database (from .env or Key Vault in production)
+      DATABASE_URL: "${DATABASE_URL}"
+      
+      # JWT Authentication (from .env or Key Vault in production)
+      JWT_SECRET: "${JWT_SECRET}"
+      
+      # Azure Storage
+      AZURE_STORAGE_ACCOUNT_NAME: "${AZURE_STORAGE_ACCOUNT_NAME}"
+      AZURE_STORAGE_CONTAINER: "issues"
+      
+      # Azure Key Vault (production only)
+      KEY_VAULT_NAME: "${KEY_VAULT_NAME}"
+      
+      # Managed Identity credentials (Azure VM only)
+      AZURE_CLIENT_ID: "${AZURE_CLIENT_ID}"
+      AZURE_TENANT_ID: "${AZURE_TENANT_ID}"
+      AZURE_CLIENT_SECRET: "${AZURE_CLIENT_SECRET}"
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: issues-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./web/dist:/var/www/app
+      - ./infra/nginx/app-ssl.conf:/etc/nginx/conf.d/default.conf
+      - ./infra/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - api
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
