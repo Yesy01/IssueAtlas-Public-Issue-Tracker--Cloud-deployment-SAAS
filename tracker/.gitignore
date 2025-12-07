@@ -3,6 +3,7 @@ api/dist
 api/prisma/.env
 docs/progress
 api/.env
+api/logs/
 .env
 .env.local
 .env.production
