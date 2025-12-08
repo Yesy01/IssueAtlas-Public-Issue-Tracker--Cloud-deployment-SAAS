@@ -123,7 +123,7 @@ export function ReportPage({ user }: ReportPageProps) {
       if (file) {
         const formData = new FormData();
         formData.append("file", file);
-        const uploadRes = await api.post<{ url: string }>("/uploads", formData, {
+        const uploadRes = await api.post<{ url: string; key: string }>("/uploads", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         imageUrl = uploadRes.data.url;
@@ -265,10 +265,10 @@ export function ReportPage({ user }: ReportPageProps) {
           <div className="report-form-card">
             <form onSubmit={handleSubmit} className="report-form">
               <div>
-                <h3 className="form-section-title">
-                  <span className="form-section-icon">📝</span>
-                  Issue Details
-                </h3>
+            <h3 className="form-section-title">
+              <span className="form-section-icon">Info</span>
+              Issue Details
+            </h3>
                 <div className="form-grid">
                   <div className="form-field">
                     <label htmlFor="title">
@@ -316,10 +316,10 @@ export function ReportPage({ user }: ReportPageProps) {
               </div>
 
               <div>
-                <h3 className="form-section-title">
-                  <span className="form-section-icon">📍</span>
-                  Location Information
-                </h3>
+            <h3 className="form-section-title">
+              <span className="form-section-icon">Location</span>
+              Location Information
+            </h3>
                 <div className="form-grid form-grid-2">
                   <div className="form-field">
                     <label htmlFor="address">Address</label>
@@ -365,35 +365,33 @@ export function ReportPage({ user }: ReportPageProps) {
                         Getting location...
                       </>
                     ) : (
-                      <>
-                        📍 Use My Current Location
-                      </>
+                      <>Use My Current Location</>
                     )}
                   </button>
                   
                   {error && (
                     <div className="location-message error">
-                      <span className="form-message-icon">⚠️</span>
+                      <span className="form-message-icon">!</span>
                       <span>{error}</span>
                     </div>
                   )}
 
                   {message && (
                     <div className="location-message success">
-                      <span className="form-message-icon">✓</span>
+                      <span className="form-message-icon">OK</span>
                       <span>{message}</span>
                     </div>
                   )}
                   
                   <p className="location-instruction">
-                    💡 Click on the map or use GPS to select the exact location
+                    Note: Click on the map or use GPS to select the exact location
                   </p>
                 </div>
               </div>
 
               <div>
                 <h3 className="form-section-title">
-                  <span className="form-section-icon">📷</span>
+                  <span className="form-section-icon">Photo</span>
                   Photo Evidence
                 </h3>
                 <div className="form-field">
@@ -408,13 +406,13 @@ export function ReportPage({ user }: ReportPageProps) {
                       className="file-input"
                     />
                     <label htmlFor="image" className="file-input-button">
-                      📁 {file ? "Change Image" : "Choose Image (Max 5MB)"}
+                      {file ? "Change Image" : "Choose Image (Max 5MB)"}
                     </label>
                   </div>
                   {file && (
                     <div className="file-preview">
                       <span className="file-name">
-                        📷 {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                        {file.name} ({(file.size / 1024).toFixed(1)} KB)
                       </span>
                       <button
                         type="button"
@@ -436,15 +434,13 @@ export function ReportPage({ user }: ReportPageProps) {
                       Submitting...
                     </>
                   ) : (
-                    <>
-                      📨 Submit Report
-                    </>
+                    <>Submit Report</>
                   )}
                 </button>
               </div>
 
               <div className="user-info-badge">
-                <span className="user-info-icon">👤</span>
+                <span className="user-info-icon">User</span>
                 Reporting as <span className="user-info-email">{user.email}</span>
               </div>
             </form>
@@ -455,7 +451,7 @@ export function ReportPage({ user }: ReportPageProps) {
           <div className="report-map-card">
             <div className="map-section-header">
               <h3 className="map-section-title">
-                <span className="form-section-icon">🗺️</span>
+                <span className="form-section-icon">Map</span>
                 Select Location
               </h3>
               <p className="map-section-description">

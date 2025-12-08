@@ -117,15 +117,15 @@ export function NotificationBell({ user }: NotificationBellProps) {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'status_change':
-        return '🔄';
+        return 'Update';
       case 'issue_resolved':
-        return '✅';
+        return 'Resolved';
       case 'new_comment':
-        return '💬';
+        return 'Comment';
       case 'issue_upvoted':
-        return '👍';
+        return 'Upvote';
       default:
-        return '🔔';
+        return 'Alert';
     }
   };
 
@@ -140,7 +140,7 @@ export function NotificationBell({ user }: NotificationBellProps) {
         onClick={handleBellClick}
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
       >
-        <span className="bell-icon">🔔</span>
+        <span className="bell-icon">Alerts</span>
         {unreadCount > 0 && (
           <span className="notification-badge">
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -164,7 +164,7 @@ export function NotificationBell({ user }: NotificationBellProps) {
               <div className="notification-loading">Loading...</div>
             ) : notifications.length === 0 ? (
               <div className="notification-empty">
-                <span className="empty-icon">📭</span>
+                <span className="empty-icon">Empty</span>
                 <p>No notifications yet</p>
               </div>
             ) : (

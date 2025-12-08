@@ -150,7 +150,7 @@ export function AuthPage({ onAuth, setUser }: AuthPageProps) {
             onClick={() => navigate("/guest-report")}
             className="guest-access-btn"
           >
-            🚀 Continue as Guest
+            Continue as Guest
           </button>
         </div>
       </div>

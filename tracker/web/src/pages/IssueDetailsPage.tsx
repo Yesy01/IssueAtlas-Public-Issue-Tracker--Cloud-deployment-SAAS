@@ -178,16 +178,16 @@ export function IssueDetailsPage({ user: _user }: IssueDetailsPageProps) {
 
           <div className="issue-meta">
             <span className="issue-type">
-              📌 {issueTypeLabels[issue.type] || issue.type}
+              Type: {issueTypeLabels[issue.type] || issue.type}
             </span>
             {issue.areaName && (
-              <span className="issue-area">📍 {issue.areaName}</span>
+              <span className="issue-area">Location: {issue.areaName}</span>
             )}
             {issue.address && (
-              <span className="issue-address">🏠 {issue.address}</span>
+              <span className="issue-address">Address: {issue.address}</span>
             )}
             <span className="issue-date">
-              🕐 Reported {new Date(issue.createdAt).toLocaleDateString("en-US", {
+              Reported {new Date(issue.createdAt).toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "long",
                 day: "numeric",
@@ -216,7 +216,7 @@ export function IssueDetailsPage({ user: _user }: IssueDetailsPageProps) {
               onUpvote={handleUpvote}
             />
             <span className="comment-count">
-              💬 {comments.length} comment{comments.length !== 1 ? "s" : ""}
+              {comments.length} comment{comments.length !== 1 ? "s" : ""}
             </span>
           </div>
 
@@ -253,16 +253,16 @@ export function IssueDetailsPage({ user: _user }: IssueDetailsPageProps) {
           )}
 
           <div className="issue-share">
-            <h4>Share</h4>
-            <button
-              className="share-button"
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                alert("Link copied to clipboard!");
-              }}
-            >
-              📋 Copy Link
-            </button>
+              <h4>Share</h4>
+              <button
+                className="share-button"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  alert("Link copied to clipboard!");
+                }}
+              >
+                Copy Link
+              </button>
           </div>
         </div>
       </div>

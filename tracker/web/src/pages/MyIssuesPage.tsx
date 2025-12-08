@@ -137,7 +137,7 @@ export default function MyIssuesPage({ user }: MyIssuesPageProps) {
         <div className="empty-state">
           {issues.length === 0 ? (
             <>
-              <div className="empty-icon">📋</div>
+              <div className="empty-icon">No issues</div>
               <h2>No issues reported yet</h2>
               <p>When you report an issue, it will appear here so you can track its progress.</p>
               <Link to="/report" className="empty-action-btn">
@@ -146,7 +146,7 @@ export default function MyIssuesPage({ user }: MyIssuesPageProps) {
             </>
           ) : (
             <>
-              <div className="empty-icon">🔍</div>
+              <div className="empty-icon">No results</div>
               <h2>No {filter.replace('_', ' ')} issues</h2>
               <p>You don't have any issues with this status.</p>
             </>
@@ -172,7 +172,7 @@ export default function MyIssuesPage({ user }: MyIssuesPageProps) {
                 </span>
                 <div className="issue-stats">
                   <span className="stat">
-                    👍 {issue._count?.upvotes || 0}
+                    Upvotes {issue._count?.upvotes || 0}
                   </span>
                 </div>
               </div>

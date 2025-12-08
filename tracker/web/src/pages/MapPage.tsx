@@ -188,7 +188,7 @@ export function MapPage({ user: _user }: MapPageProps) {
               )}</span>
               ${
                 issue.areaName
-                  ? `<span class="map-issue-popup-area">📍 ${escapeHtml(issue.areaName)}</span>`
+                  ? `<span class="map-issue-popup-area">Location: ${escapeHtml(issue.areaName)}</span>`
                   : ""
               }
             </div>
@@ -395,7 +395,7 @@ export function MapPage({ user: _user }: MapPageProps) {
               </div>
             ) : issues.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">📍</div>
+                <div className="empty-state-icon">No issues</div>
                 <p className="empty-state-text">No issues found matching your filters.</p>
               </div>
             ) : (
@@ -415,7 +415,7 @@ export function MapPage({ user: _user }: MapPageProps) {
                         <span className="issue-type-badge">{issue.type}</span>
                         {issue.areaName && (
                           <span className="issue-area">
-                            📍 {issue.areaName}
+                            Location: {issue.areaName}
                           </span>
                         )}
                       </div>
@@ -427,7 +427,7 @@ export function MapPage({ user: _user }: MapPageProps) {
                           className="issue-image-link"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          📷 View image
+                          View image
                         </a>
                       )}
                     </Link>

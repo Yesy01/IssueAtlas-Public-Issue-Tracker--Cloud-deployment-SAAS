@@ -13,6 +13,7 @@ import {
   notifyNewComment,
   notifyUpvote,
 } from "../lib/notifications";
+import { findIssuesWithinRadius, updateIssueLocation } from "../lib/postgis";
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -79,6 +80,10 @@ router.post("/", authGuard, async (req: Request, res: Response) => {
         // status defaults to "new" via Prisma schema
       },
     });
+
+    if (Number.isFinite(data.lat) && Number.isFinite(data.lon)) {
+      await updateIssueLocation(issue.id, data.lat, data.lon);
+    }
 
     return res.status(201).json({ issue });
   } catch (err) {
@@ -182,6 +187,43 @@ router.get("/", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("[GET /api/issues] error:", err);
     return res.status(500).json({ error: "Failed to list issues" });
+  }
+});
+
+/**
+ * GET /api/issues/nearby
+ * Query params: lat, lon, radius (meters, optional, default 5000)
+ * Public
+ */
+router.get("/nearby", async (req: Request, res: Response) => {
+  const { lat, lon, radius } = req.query;
+
+  if (typeof lat !== "string" || typeof lon !== "string") {
+    return res.status(400).json({ error: "lat and lon are required" });
+  }
+
+  const latNum = parseFloat(lat);
+  const lonNum = parseFloat(lon);
+
+  if (!Number.isFinite(latNum) || !Number.isFinite(lonNum)) {
+    return res.status(400).json({ error: "lat and lon must be numbers" });
+  }
+
+  const radiusMeters =
+    typeof radius === "string" && Number.isFinite(parseFloat(radius))
+      ? parseFloat(radius)
+      : 5000;
+
+  try {
+    const issues = (await findIssuesWithinRadius(
+      latNum,
+      lonNum,
+      radiusMeters
+    )) as any[];
+    return res.json({ items: issues, count: issues.length });
+  } catch (err) {
+    console.error("[GET /api/issues/nearby] error:", err);
+    return res.status(500).json({ error: "Failed to query nearby issues" });
   }
 });
 

@@ -57,7 +57,7 @@ export function UpvoteButton({ issueId, initialCount, onUpvote }: UpvoteButtonPr
         disabled={loading || hasVoted}
         title={!isLoggedIn ? "Login to upvote" : hasVoted ? "Already upvoted" : "Upvote this issue"}
       >
-        <span className="upvote-icon">👍</span>
+        <span className="upvote-icon">Upvote</span>
         <span className="upvote-count">{count}</span>
       </button>
       {error && <span className="upvote-error">{error}</span>}

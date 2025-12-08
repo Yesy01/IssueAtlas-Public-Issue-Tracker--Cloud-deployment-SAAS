@@ -111,7 +111,7 @@ export function AdminPage({ user: _user }: AdminPageProps) {
         <>
           {issues.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-icon">📋</div>
+              <div className="empty-icon">No data</div>
               <h3>No issues found</h3>
               <p>
                 {filter === "all"

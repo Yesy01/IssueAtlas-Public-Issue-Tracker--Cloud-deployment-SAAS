@@ -105,7 +105,7 @@ export function GuestReportPage() {
       if (file) {
         const formData = new FormData();
         formData.append("file", file);
-        const uploadRes = await api.post<{ url: string }>("/uploads", formData, {
+        const uploadRes = await api.post<{ url: string; key: string }>("/uploads", formData, {
           headers: { 
             "Content-Type": "multipart/form-data",
             "Authorization": `Bearer ${guestToken}`
@@ -245,7 +245,7 @@ export function GuestReportPage() {
           Help improve your community by reporting infrastructure problems
         </p>
         <div className="guest-notice">
-          📝 You're submitting as a guest. <button onClick={() => navigate("/auth")} className="auth-link-btn">Sign in</button> for full access to features.
+          You're submitting as a guest. <button onClick={() => navigate("/auth")} className="auth-link-btn">Sign in</button> for full access to features.
         </div>
       </header>
 
@@ -255,7 +255,7 @@ export function GuestReportPage() {
             <form onSubmit={handleSubmit} className="report-form">
               <div>
                 <h3 className="form-section-title">
-                  <span className="form-section-icon">📝</span>
+                  <span className="form-section-icon">Info</span>
                   Issue Details
                 </h3>
                 <div className="form-grid">
@@ -306,7 +306,7 @@ export function GuestReportPage() {
 
               <div>
                 <h3 className="form-section-title">
-                  <span className="form-section-icon">📍</span>
+                  <span className="form-section-icon">Location</span>
                   Location Information
                 </h3>
                 <div className="form-grid form-grid-2">
@@ -354,35 +354,33 @@ export function GuestReportPage() {
                         Getting location...
                       </>
                     ) : (
-                      <>
-                        📍 Use My Current Location
-                      </>
+                      <>Use My Current Location</>
                     )}
                   </button>
                   
                   {error && (
                     <div className="location-message error">
-                      <span className="form-message-icon">⚠️</span>
+                      <span className="form-message-icon">!</span>
                       <span>{error}</span>
                     </div>
                   )}
 
                   {message && (
                     <div className="location-message success">
-                      <span className="form-message-icon">✓</span>
+                      <span className="form-message-icon">OK</span>
                       <span>{message}</span>
                     </div>
                   )}
                   
                   <p className="location-instruction">
-                    💡 Click on the map or use GPS
+                    Note: Click on the map or use GPS
                   </p>
                 </div>
               </div>
 
               <div>
                 <h3 className="form-section-title">
-                  <span className="form-section-icon">📷</span>
+                  <span className="form-section-icon">Photo</span>
                   Photo Evidence
                 </h3>
                 <div className="form-field">
@@ -397,13 +395,13 @@ export function GuestReportPage() {
                       className="file-input"
                     />
                     <label htmlFor="image" className="file-input-button">
-                      📁 {file ? "Change Image" : "Choose Image (Max 5MB)"}
+                      {file ? "Change Image" : "Choose Image (Max 5MB)"}
                     </label>
                   </div>
                   {file && (
                     <div className="file-preview">
                       <span className="file-name">
-                        📷 {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                        {file.name} ({(file.size / 1024).toFixed(1)} KB)
                       </span>
                       <button
                         type="button"
@@ -425,9 +423,7 @@ export function GuestReportPage() {
                       Submitting...
                     </>
                   ) : (
-                    <>
-                      📨 Submit Report
-                    </>
+                    <>Submit Report</>
                   )}
                 </button>
               </div>
@@ -439,7 +435,7 @@ export function GuestReportPage() {
           <div className="report-map-card">
             <div className="map-section-header">
               <h3 className="map-section-title">
-                <span className="form-section-icon">🗺️</span>
+                <span className="form-section-icon">Map</span>
                 Select Location
               </h3>
               <p className="map-section-description">

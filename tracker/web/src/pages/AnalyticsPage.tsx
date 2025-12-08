@@ -222,7 +222,7 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
       {/* Summary Cards */}
       <section className="summary-section">
         <div className="summary-card total-card">
-          <div className="card-icon">📊</div>
+          <div className="card-icon">Data</div>
           <div className="card-content">
             <span className="card-value">{summary?.totalIssues || 0}</span>
             <span className="card-label">Total Issues</span>
@@ -230,7 +230,7 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
         </div>
         
         <div className="summary-card">
-          <div className="card-icon">🆕</div>
+          <div className="card-icon">New</div>
           <div className="card-content">
             <span className="card-value">{summary?.byStatus.new || 0}</span>
             <span className="card-label">New Issues</span>
@@ -238,7 +238,7 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
         </div>
         
         <div className="summary-card">
-          <div className="card-icon">🔄</div>
+          <div className="card-icon">Change</div>
           <div className="card-content">
             <span className="card-value">{summary?.byStatus.in_progress || 0}</span>
             <span className="card-label">In Progress</span>
@@ -246,7 +246,7 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
         </div>
         
         <div className="summary-card">
-          <div className="card-icon">✅</div>
+          <div className="card-icon">Resolved</div>
           <div className="card-content">
             <span className="card-value">{summary?.byStatus.resolved || 0}</span>
             <span className="card-label">Resolved</span>
@@ -341,7 +341,7 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
 
         {/* Hot Spots Map */}
         <section className="chart-section map-section">
-          <h2>🗺️ Hot Spots Map</h2>
+          <h2>Hot Spots Map</h2>
           <p className="section-description">Geographic distribution of issues - larger circles indicate more reports</p>
           <div className="hotspot-map-container">
             <div ref={mapContainerRef} className="analytics-map">
