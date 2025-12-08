@@ -36,7 +36,7 @@ function getBlobServiceClient(): BlobServiceClient {
 export async function uploadIssueFile(
   file: Express.Multer.File,
   opts?: { issueId?: string }
-): Promise<string> {
+): Promise<{ key: string; url: string }> {
   const issueId = opts?.issueId || "unassigned";
   const now = new Date();
 
@@ -63,5 +63,28 @@ export async function uploadIssueFile(
     },
   });
 
-  return blobClient.url;
+  const key = blobName;
+  const url = `/api/images/${encodeURIComponent(key)}`;
+  return { key, url };
+}
+
+export async function downloadIssueFile(key: string): Promise<{
+  stream: NodeJS.ReadableStream;
+  contentType?: string;
+}> {
+  const service = getBlobServiceClient();
+  const containerClient = service.getContainerClient(containerName);
+  const blobClient = containerClient.getBlockBlobClient(key);
+
+  const resp = await blobClient.download();
+  const stream = resp.readableStreamBody;
+  if (!stream) {
+    throw new Error("No stream returned from blob download");
+  }
+
+  return {
+    stream,
+    contentType:
+      resp.contentType || resp.details.contentType || "application/octet-stream",
+  };
 }

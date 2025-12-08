@@ -29,8 +29,8 @@ router.post(
         : undefined;
 
     try {
-      const url = await uploadIssueFile(req.file, { issueId });
-      return res.status(201).json({ url });
+      const { key, url } = await uploadIssueFile(req.file, { issueId });
+      return res.status(201).json({ key, url });
     } catch (err) {
       console.error("[POST /api/uploads] error:", err);
       return res.status(500).json({ error: "Failed to upload file" });

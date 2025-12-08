@@ -11,6 +11,7 @@ import { errorHandler } from "./middleware/error";
 import uploadsRoutes from "./routes/uploads";
 import { prisma } from './lib/prisma';
 import healthRouter from "./routes/health";
+import imagesRouter from "./routes/images";
 import { generalLimiter, authLimiter, uploadLimiter } from "./middleware/rateLimit";
 import { xssProtection, cspHeaders } from "./middleware/security";
 import { logger, morganStream } from "./lib/logger";
@@ -91,6 +92,7 @@ app.use("/api/uploads", uploadLimiter, uploadsRoutes);
 app.use("/api/health", healthRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use("/api/images", imagesRouter);
 
 
 // 404 handler (for API only)
