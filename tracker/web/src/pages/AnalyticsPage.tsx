@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import L, { Map as LeafletMap } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.heat';
 import { api } from '../lib/api';
 import type { User } from '../types';
 import { LoadingSpinner, ErrorMessage } from '../components';
@@ -36,6 +37,7 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
   const [areas, setAreas] = useState<AreaData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [heatmapMode, setHeatmapMode] = useState(false);
   
   const mapRef = useRef<LeafletMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -89,7 +91,7 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
     };
   }, [areas.length]);
 
-  // Update map markers when areas data changes
+  // Update map markers / heatmap when areas data or mode changes
   useEffect(() => {
     if (!mapRef.current || !markersRef.current || areas.length === 0) return;
 
@@ -98,41 +100,60 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
 
     const maxCount = Math.max(...areas.map(a => a.count));
 
-    areas.forEach((area) => {
-      const radius = 10 + (area.count / maxCount) * 20;
-      const resolvedPercentage = area.count > 0 ? (area.resolved / area.count) * 100 : 0;
-      
-      const color = resolvedPercentage > 70 ? '#22C55E' : 
-                    resolvedPercentage > 40 ? '#F59E0B' : '#EF4444';
+    if (!maxCount) {
+      return;
+    }
 
-      const marker = L.circleMarker([area.lat, area.lng], {
-        radius,
-        fillColor: color,
-        color: '#fff',
-        weight: 2,
-        fillOpacity: 0.7,
+    if (heatmapMode) {
+      const heatPoints = areas.map((area) => {
+        const intensity = area.count / maxCount;
+        return [area.lat, area.lng, intensity] as [number, number, number];
       });
 
-      marker.bindPopup(`
-        <div style="text-align: center; font-family: var(--font-family);">
-          <strong style="font-size: 1.1em; color: var(--color-text-primary);">${area.count} Issues</strong><br/>
-          <span style="color: var(--color-text-secondary); font-size: 0.9em;">
-            ${area.resolved} resolved (${resolvedPercentage.toFixed(0)}%)
-          </span><br/>
-          <span style="color: var(--color-text-secondary); font-size: 0.85em;">
-            ${area.lat.toFixed(4)}, ${area.lng.toFixed(4)}
-          </span>
-        </div>
-      `);
+      const heatLayer = (L as any).heatLayer(heatPoints, {
+        radius: 25,
+        blur: 15,
+        maxZoom: 17,
+      });
 
-      marker.addTo(group);
-    });
+      heatLayer.addTo(group);
+    } else {
+      areas.forEach((area) => {
+        const radius = 10 + (area.count / maxCount) * 20;
+        const resolvedPercentage = area.count > 0 ? (area.resolved / area.count) * 100 : 0;
+        
+        const color = resolvedPercentage > 70 ? '#22C55E' : 
+                      resolvedPercentage > 40 ? '#F59E0B' : '#EF4444';
+
+        const marker = L.circleMarker([area.lat, area.lng], {
+          radius,
+          fillColor: color,
+          color: '#fff',
+          weight: 2,
+          fillOpacity: 0.7,
+        });
+
+        marker.bindPopup(`
+          <div style="text-align: center; font-family: var(--font-family);">
+            <strong style="font-size: 1.1em; color: var(--color-text-primary);">${area.count} Issues</strong><br/>
+            <span style="color: var(--color-text-secondary); font-size: 0.9em;">
+              ${area.resolved} resolved (${resolvedPercentage.toFixed(0)}%)
+            </span><br/>
+            <span style="color: var(--color-text-secondary); font-size: 0.85em;">
+              ${area.lat.toFixed(4)}, ${area.lng.toFixed(4)}
+            </span>
+          </div>
+        `);
+
+        marker.addTo(group);
+      });
+    }
 
     if (areas.length > 0) {
       const bounds = L.latLngBounds(areas.map(a => [a.lat, a.lng]));
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [areas]);
+  }, [areas, heatmapMode]);
 
   const fetchAnalytics = async () => {
     try {
@@ -341,8 +362,31 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
 
         {/* Hot Spots Map */}
         <section className="chart-section map-section">
-          <h2>Hot Spots Map</h2>
-          <p className="section-description">Geographic distribution of issues - larger circles indicate more reports</p>
+          <div className="map-header-row">
+            <div>
+              <h2>Hot Spots Map</h2>
+              <p className="section-description">
+                Geographic distribution of issues –{" "}
+                {heatmapMode
+                  ? "intensity shows concentrated problem areas."
+                  : "larger circles indicate more reports and resolution rate."}
+              </p>
+            </div>
+            <div className="map-toggle">
+              <button
+                className={`toggle-button ${!heatmapMode ? "active" : ""}`}
+                onClick={() => setHeatmapMode(false)}
+              >
+                Circles
+              </button>
+              <button
+                className={`toggle-button ${heatmapMode ? "active" : ""}`}
+                onClick={() => setHeatmapMode(true)}
+              >
+                Heatmap
+              </button>
+            </div>
+          </div>
           <div className="hotspot-map-container">
             <div ref={mapContainerRef} className="analytics-map">
               {areas.length === 0 && (
@@ -354,21 +398,32 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
             </div>
             <div className="map-legend">
               <h4>Legend</h4>
-              <div className="legend-items">
-                <div className="legend-item-row">
-                  <span className="legend-circle low-resolution"></span>
-                  <span>Low resolution rate (&lt;40%)</span>
+              {heatmapMode ? (
+                <>
+                  <div className="legend-note">
+                    Brighter areas indicate higher issue density.
+                  </div>
+                  <div className="legend-note">
+                    Use the trend charts above to interpret changes over time.
+                  </div>
+                </>
+              ) : (
+                <div className="legend-items">
+                  <div className="legend-item-row">
+                    <span className="legend-circle low-resolution"></span>
+                    <span>Low resolution rate (&lt;40%)</span>
+                  </div>
+                  <div className="legend-item-row">
+                    <span className="legend-circle medium-resolution"></span>
+                    <span>Medium resolution rate (40-70%)</span>
+                  </div>
+                  <div className="legend-item-row">
+                    <span className="legend-circle high-resolution"></span>
+                    <span>High resolution rate (&gt;70%)</span>
+                  </div>
+                  <div className="legend-note">Circle size indicates number of issues</div>
                 </div>
-                <div className="legend-item-row">
-                  <span className="legend-circle medium-resolution"></span>
-                  <span>Medium resolution rate (40-70%)</span>
-                </div>
-                <div className="legend-item-row">
-                  <span className="legend-circle high-resolution"></span>
-                  <span>High resolution rate (&gt;70%)</span>
-                </div>
-                <div className="legend-note">Circle size indicates number of issues</div>
-              </div>
+              )}
             </div>
           </div>
         </section>

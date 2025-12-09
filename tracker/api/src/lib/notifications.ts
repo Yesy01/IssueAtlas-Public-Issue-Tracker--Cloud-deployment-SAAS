@@ -1,28 +1,25 @@
+import { NotificationType } from "@prisma/client";
 import { prisma } from "./prisma";
-
-type NotificationType = "status_change" | "new_comment" | "issue_resolved" | "issue_upvoted";
 
 interface CreateNotificationParams {
   userId: string;
+  issueId: string;
   type: NotificationType;
-  title: string;
   message: string;
-  issueId?: string;
 }
 
 /**
  * Create a notification for a user
  */
 export async function createNotification(params: CreateNotificationParams) {
-  const { userId, type, title, message, issueId } = params;
+  const { userId, issueId, type, message } = params;
   
   return prisma.notification.create({
     data: {
       userId,
-      type,
-      title,
-      message,
       issueId,
+      type,
+      message,
     },
   });
 }
@@ -44,20 +41,15 @@ export async function notifyStatusChange(
     resolved: "Resolved",
   };
 
-  const title = newStatus === "resolved" 
-    ? "Issue Resolved!" 
-    : "Issue Status Updated";
-  
   const message = oldStatus
     ? `Your issue "${issueTitle}" has been updated from ${statusLabels[oldStatus] || oldStatus} to ${statusLabels[newStatus] || newStatus}.`
     : `Your issue "${issueTitle}" status is now ${statusLabels[newStatus] || newStatus}.`;
 
   return createNotification({
     userId: reporterId,
-    type: newStatus === "resolved" ? "issue_resolved" : "status_change",
-    title,
-    message,
     issueId,
+    type: NotificationType.STATUS_CHANGE,
+    message,
   });
 }
 
@@ -78,10 +70,9 @@ export async function notifyNewComment(
 
   return createNotification({
     userId: reporterId,
-    type: "new_comment",
-    title: "New Comment on Your Issue",
-    message: `${commenterEmail} commented on your issue "${issueTitle}".`,
     issueId,
+    type: NotificationType.COMMENT,
+    message: `${commenterEmail} commented on your issue "${issueTitle}".`,
   });
 }
 
@@ -108,10 +99,9 @@ export async function notifyUpvote(
 
   return createNotification({
     userId: reporterId,
-    type: "issue_upvoted",
-    title: "Your Issue is Getting Attention!",
-    message: `Your issue "${issueTitle}" has reached ${totalUpvotes} upvote${totalUpvotes > 1 ? 's' : ''}!`,
     issueId,
+    type: NotificationType.STATUS_CHANGE,
+    message: `Your issue "${issueTitle}" has reached ${totalUpvotes} upvote${totalUpvotes > 1 ? 's' : ''}!`,
   });
 }
 

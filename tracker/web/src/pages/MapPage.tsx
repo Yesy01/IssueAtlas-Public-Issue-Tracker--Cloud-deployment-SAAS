@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import L, { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { api } from "../lib/api";
+import { getIssues, getNearbyIssues } from "../lib/api";
 import type { Issue, IssueStatus, IssueType, User } from "../types";
 import { StatusBadge, LoadingSpinner } from "../components";
 import { STATUS_COLORS, STATUS_LABELS } from "../lib/status";
@@ -19,6 +19,10 @@ export function MapPage({ user: _user }: MapPageProps) {
   const [type, setType] = useState<IssueType | "">("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"all" | "nearby">("all");
+  const [radius, setRadius] = useState(2000);
+  const [loadingNearby, setLoadingNearby] = useState(false);
+  const [nearbyError, setNearbyError] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const mapRef = useRef<LeafletMap | null>(null);
@@ -133,6 +137,7 @@ export function MapPage({ user: _user }: MapPageProps) {
   // Fetch issues with filters
   useEffect(() => {
     async function fetchIssues() {
+      if (mode === "nearby") return;
       setLoading(true);
       try {
         const params: Record<string, string> = {};
@@ -140,8 +145,8 @@ export function MapPage({ user: _user }: MapPageProps) {
         if (type) params.type = type;
         if (search) params.search = search;
 
-        const res = await api.get<{ items: Issue[] }>("/issues", { params });
-        setIssues(res.data.items);
+        const res = await getIssues(params);
+        setIssues(res.items);
       } catch (err: unknown) {
         console.error("Failed to fetch issues", err);
       } finally {
@@ -149,7 +154,39 @@ export function MapPage({ user: _user }: MapPageProps) {
       }
     }
     fetchIssues();
-  }, [status, type, search]);
+  }, [status, type, search, mode]);
+
+  const loadNearbyIssues = () => {
+    setNearbyError(null);
+
+    if (!navigator.geolocation) {
+      setNearbyError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setLoadingNearby(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const nearby = await getNearbyIssues(latitude, longitude, radius);
+          setIssues(nearby);
+          setMode("nearby");
+        } catch (err: any) {
+          setNearbyError(
+            err?.response?.data?.error || "Failed to load nearby issues."
+          );
+        } finally {
+          setLoadingNearby(false);
+        }
+      },
+      (err) => {
+        setNearbyError(err.message || "Failed to get your location.");
+        setLoadingNearby(false);
+      }
+    );
+  };
 
   // Render markers when issues change
   useEffect(() => {
@@ -377,6 +414,49 @@ export function MapPage({ user: _user }: MapPageProps) {
                     <option value="other">Other</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="location-filter">
+                <div className="location-filter-header">
+                  <span className="filter-label">Location filter</span>
+                  {mode === "nearby" && (
+                    <button
+                      className="location-clear"
+                      onClick={() => {
+                        setMode("all");
+                        setNearbyError(null);
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <label className="filter-subtext">Radius around my location</label>
+                <select
+                  className="filter-select"
+                  value={radius}
+                  onChange={(e) => setRadius(Number(e.target.value))}
+                >
+                  <option value={1000}>1 km</option>
+                  <option value={2000}>2 km</option>
+                  <option value={5000}>5 km</option>
+                  <option value={10000}>10 km</option>
+                </select>
+                <button
+                  className="location-button"
+                  onClick={loadNearbyIssues}
+                  disabled={loadingNearby}
+                >
+                  {loadingNearby ? "Finding nearby issues…" : "Show issues near me"}
+                </button>
+                {nearbyError && (
+                  <p className="filter-error">{nearbyError}</p>
+                )}
+                {mode === "nearby" && !nearbyError && (
+                  <p className="filter-subtext">
+                    Showing issues within {radius / 1000} km of your location.
+                  </p>
+                )}
               </div>
             </div>
           </div>

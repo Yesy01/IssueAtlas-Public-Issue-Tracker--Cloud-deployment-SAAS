@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { z } from "zod";
+import { PrismaClient, NotificationType } from "@prisma/client";
 import {
   IssueCreateSchema,
   IssueUpdateSchema,
@@ -8,15 +9,23 @@ import {
 } from "../lib/validation";
 import { authGuard } from "../middleware/authGuard";
 import { adminOnly } from "../middleware/adminOnly";
-import {
-  notifyStatusChange,
-  notifyNewComment,
-  notifyUpvote,
-} from "../lib/notifications";
+import { notifyNewComment, notifyUpvote } from "../lib/notifications";
 import { findIssuesWithinRadius, updateIssueLocation } from "../lib/postgis";
 
 const prisma = new PrismaClient();
 const router = Router();
+
+const OfficialResponseSchema = z.object({
+  officialResponse: z
+    .string()
+    .min(5, "Response should be at least 5 characters"),
+});
+
+const FlagIssueSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
+const VerifyIssueSchema = z.object({});
 
 /**
  * POST /api/issues
@@ -370,6 +379,12 @@ router.patch(
         data: {
           status: newStatus,
         },
+        include: {
+          reporter: true,
+          upvotes: {
+            select: { userId: true },
+          },
+        },
       });
 
       await prisma.statusHistory.create({
@@ -381,15 +396,32 @@ router.patch(
         },
       });
 
-      // Send notification to the issue reporter
+      // Notify reporter and upvoters about the status change (excluding the actor)
       try {
-        await notifyStatusChange(
-          id,
-          existing.reporterId,
-          existing.status,
-          newStatus,
-          existing.title
-        );
+        const watcherIds = new Set<string>();
+
+        if (updated.reporterId) {
+          watcherIds.add(updated.reporterId);
+        }
+
+        for (const up of updated.upvotes) {
+          watcherIds.add(up.userId);
+        }
+
+        watcherIds.delete(req.user.id);
+
+        const message = `Status of "${updated.title}" changed to ${newStatus}.`;
+
+        const data = Array.from(watcherIds).map((userId) => ({
+          userId,
+          issueId: updated.id,
+          type: NotificationType.STATUS_CHANGE,
+          message,
+        }));
+
+        if (data.length > 0) {
+          await prisma.notification.createMany({ data });
+        }
       } catch (notifyErr) {
         console.error("[PATCH /api/issues/:id/status] notification error:", notifyErr);
         // Don't fail the request if notification fails
@@ -399,6 +431,109 @@ router.patch(
     } catch (err) {
       console.error("[PATCH /api/issues/:id/status] error:", err);
       return res.status(500).json({ error: "Failed to update status" });
+    }
+  }
+);
+
+// PATCH /api/issues/:id/official-response
+router.patch(
+  "/:id/official-response",
+  authGuard,
+  adminOnly,
+  async (req: Request, res: Response) => {
+    const { id: issueId } = req.params;
+
+    const parsed = OfficialResponseSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: "Invalid payload",
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const { officialResponse } = parsed.data;
+
+    try {
+      const issue = await prisma.issue.update({
+        where: { id: issueId },
+        data: {
+          officialResponse,
+          officialRespondedAt: new Date(),
+        },
+      });
+
+      return res.json({ issue });
+    } catch (err) {
+      console.error("[PATCH /api/issues/:id/official-response] error:", err);
+      return res.status(500).json({ error: "Failed to save official response" });
+    }
+  }
+);
+
+// POST /api/issues/:id/verify
+router.post(
+  "/:id/verify",
+  authGuard,
+  adminOnly,
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const parsed = VerifyIssueSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: "Invalid payload",
+        details: parsed.error.flatten(),
+      });
+    }
+
+    try {
+      const issue = await prisma.issue.update({
+        where: { id },
+        data: {
+          verified: true,
+          verifiedAt: new Date(),
+          verifiedById: req.user!.id,
+        },
+      });
+
+      return res.json({ issue });
+    } catch (err) {
+      console.error("[POST /api/issues/:id/verify] error:", err);
+      return res.status(500).json({ error: "Failed to verify issue" });
+    }
+  }
+);
+
+// POST /api/issues/:id/flag
+router.post(
+  "/:id/flag",
+  authGuard,
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const parsed = FlagIssueSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: "Invalid flag payload",
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const { reason } = parsed.data;
+
+    try {
+      const issue = await prisma.issue.update({
+        where: { id },
+        data: {
+          flagged: true,
+          flaggedReason: reason && reason.trim().length ? reason.trim() : null,
+        },
+      });
+
+      return res.json({ issue });
+    } catch (err) {
+      console.error("[POST /api/issues/:id/flag] error:", err);
+      return res.status(500).json({ error: "Failed to flag issue" });
     }
   }
 );

@@ -1,8 +1,12 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { prisma } from "../lib/prisma";
 import { authGuard } from "../middleware/authGuard";
+import { adminOnly } from "../middleware/adminOnly";
 
 const router = Router();
+
+// Enforce: only authenticated admins can access analytics
+router.use(authGuard, adminOnly);
 
 interface StatusCount {
   status: string;
@@ -156,7 +160,7 @@ router.get("/areas", async (_req: Request, res: Response, next: NextFunction) =>
 });
 
 // GET /api/analytics/response-time - Get average resolution time
-router.get("/response-time", authGuard, async (_req: Request, res: Response, next: NextFunction) => {
+router.get("/response-time", async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const resolvedIssues = await prisma.issue.findMany({
       where: {
@@ -202,13 +206,8 @@ router.get("/response-time", authGuard, async (_req: Request, res: Response, nex
 });
 
 // GET /api/analytics/top-reporters - Get users with most reports (admin only)
-router.get("/top-reporters", authGuard, async (req: Request, res: Response, next: NextFunction) => {
+router.get("/top-reporters", async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    if (req.user?.role !== 'admin') {
-      res.status(403).json({ error: 'Admin access required' });
-      return;
-    }
-
     const topReporters = await prisma.issue.groupBy({
       by: ['reporterId'],
       _count: { id: true },

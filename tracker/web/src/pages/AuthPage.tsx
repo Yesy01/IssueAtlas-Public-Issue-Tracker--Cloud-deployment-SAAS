@@ -1,6 +1,6 @@
 // src/pages/AuthPage.tsx
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { api } from "../lib/api";
 import { setToken } from "../lib/auth";
 import type { User } from "../types";
@@ -24,6 +24,9 @@ export function AuthPage({ onAuth, setUser }: AuthPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const reason = new URLSearchParams(location.search).get("reason");
+  const sessionExpired = reason === "expired";
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -77,6 +80,12 @@ export function AuthPage({ onAuth, setUser }: AuthPageProps) {
             Register
           </button>
         </div>
+
+        {sessionExpired && (
+          <div className="session-expired-banner">
+            Your session expired. Please log in again.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">

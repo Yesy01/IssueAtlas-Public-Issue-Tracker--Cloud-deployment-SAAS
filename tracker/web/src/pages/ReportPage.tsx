@@ -24,6 +24,8 @@ export function ReportPage({ user }: ReportPageProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
 
   const mapRef = useRef<LeafletMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -110,6 +112,25 @@ export function ReportPage({ user }: ReportPageProps) {
     e.preventDefault();
     setError(null);
     setMessage(null);
+    setTitleError(null);
+    setDescriptionError(null);
+
+    let hasError = false;
+
+    if (!title.trim() || title.trim().length < 3) {
+      setTitleError("Title is required and must be at least 3 characters.");
+      hasError = true;
+    }
+
+    if (!description.trim() || description.trim().length < 10) {
+      setDescriptionError("Description is required and must be at least 10 characters.");
+      hasError = true;
+    }
+
+    if (hasError) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
 
     if (lat == null || lon == null) {
       setError("Please click on the map to choose a location for the issue.");
@@ -163,8 +184,18 @@ export function ReportPage({ user }: ReportPageProps) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: unknown) {
       console.error(err);
+      const details = (err as any)?.response?.data?.details;
+      if (details?.fieldErrors) {
+        if (details.fieldErrors.title?.[0]) {
+          setTitleError(details.fieldErrors.title[0]);
+        }
+        if (details.fieldErrors.description?.[0]) {
+          setDescriptionError(details.fieldErrors.description[0]);
+        }
+      }
       const msg =
-        err instanceof Error ? err.message : "Failed to create issue. Please try again.";
+        (err as any)?.response?.data?.error ||
+        (err instanceof Error ? err.message : "Failed to create issue. Please try again.");
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -282,6 +313,11 @@ export function ReportPage({ user }: ReportPageProps) {
                       required
                       placeholder="Brief description of the issue"
                     />
+                    {titleError && (
+                      <p className="form-error-text">
+                        {titleError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="form-field">
@@ -295,6 +331,11 @@ export function ReportPage({ user }: ReportPageProps) {
                       required
                       placeholder="Provide detailed information about the issue"
                     />
+                    {descriptionError && (
+                      <p className="form-error-text">
+                        {descriptionError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="form-field">

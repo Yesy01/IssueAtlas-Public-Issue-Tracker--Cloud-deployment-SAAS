@@ -97,6 +97,17 @@
   position: relative;
 }
 
+.nav-link .badge-unread {
+  margin-left: 0.35rem;
+  padding: 0 0.45rem;
+  border-radius: 9999px;
+  background-color: #ef4444;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .nav-link::after {
   content: '';
   position: absolute;

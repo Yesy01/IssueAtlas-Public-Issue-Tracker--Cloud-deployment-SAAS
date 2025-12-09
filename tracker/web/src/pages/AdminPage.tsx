@@ -1,7 +1,7 @@
 // src/pages/AdminPage.tsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, verifyIssue } from "../lib/api";
 import type { Issue, IssueStatus, User } from "../types";
 import { StatusBadge } from "../components";
 import "./AdminPage.css";
@@ -14,13 +14,13 @@ export function AdminPage({ user: _user }: AdminPageProps) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | IssueStatus>("all");
+  const [filter, setFilter] = useState<"all" | IssueStatus | "unverified" | "flagged">("all");
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const params = filter === "all" ? {} : { status: filter };
+      const params = filter === "all" || filter === "unverified" || filter === "flagged" ? {} : { status: filter };
       const res = await api.get<{ items: Issue[] }>("/issues", { params });
       setIssues(res.data.items);
     } catch (err: unknown) {
@@ -52,6 +52,16 @@ export function AdminPage({ user: _user }: AdminPageProps) {
       year: "numeric",
     });
   };
+
+  const visibleIssues = issues.filter((issue) => {
+    if (filter === "unverified") {
+      return !issue.verified;
+    }
+    if (filter === "flagged") {
+      return issue.flagged === true;
+    }
+    return true;
+  });
 
   return (
     <div className="admin-page">
@@ -96,6 +106,18 @@ export function AdminPage({ user: _user }: AdminPageProps) {
         >
           Resolved
         </button>
+        <button
+          className={`filter-btn ${filter === "unverified" ? "active" : ""}`}
+          onClick={() => setFilter("unverified")}
+        >
+          Unverified
+        </button>
+        <button
+          className={`filter-btn ${filter === "flagged" ? "active" : ""}`}
+          onClick={() => setFilter("flagged")}
+        >
+          Flagged
+        </button>
       </div>
 
       {loading && (
@@ -109,7 +131,7 @@ export function AdminPage({ user: _user }: AdminPageProps) {
 
       {!loading && !error && (
         <>
-          {issues.length === 0 ? (
+          {visibleIssues.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">No data</div>
               <h3>No issues found</h3>
@@ -121,7 +143,7 @@ export function AdminPage({ user: _user }: AdminPageProps) {
             </div>
           ) : (
             <div className="issues-grid">
-              {issues.map((issue) => (
+              {visibleIssues.map((issue) => (
                 <div key={issue.id} className="admin-issue-card">
                   <div className="issue-header">
                     <div className="issue-meta">
@@ -139,6 +161,14 @@ export function AdminPage({ user: _user }: AdminPageProps) {
                       ? `${issue.description.substring(0, 120)}...`
                       : issue.description}
                   </p>
+                  <div className="issue-flags">
+                    {!issue.verified && (
+                      <span className="pill warning">Unverified</span>
+                    )}
+                    {issue.flagged && (
+                      <span className="pill flagged">Flagged</span>
+                    )}
+                  </div>
 
                   <div className="issue-location">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -181,6 +211,24 @@ export function AdminPage({ user: _user }: AdminPageProps) {
                     >
                       Resolved
                     </button>
+                    {!issue.verified && (
+                      <button
+                        className="status-btn verify"
+                        onClick={async () => {
+                          try {
+                            const updated = await verifyIssue(issue.id);
+                            setIssues((prev) =>
+                              prev.map((i) => (i.id === updated.id ? updated : i))
+                            );
+                          } catch (err) {
+                            console.error("Failed to verify issue", err);
+                            alert("Failed to verify issue");
+                          }
+                        }}
+                      >
+                        Mark Verified
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

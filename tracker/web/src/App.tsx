@@ -18,8 +18,10 @@ import { AdminPage } from "./pages/AdminPage";
 import { IssueDetailsPage } from "./pages/IssueDetailsPage";
 import MyIssuesPage from "./pages/MyIssuesPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import { NotificationBell } from "./components";
 import { useTheme } from "./hooks/useTheme";
+import { getNotifications, type Notification } from "./lib/api";
 import "./App.css";
 
 interface LayoutProps {
@@ -31,10 +33,36 @@ function Layout({ user, setUser }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadUnread() {
+      if (!user) {
+        setUnreadNotifications(0);
+        return;
+      }
+
+      try {
+        const data: Notification[] = await getNotifications();
+        if (!cancelled) {
+          setUnreadNotifications(data.filter((n) => !n.read).length);
+        }
+      } catch {
+        // ignore failures here; bell still polls
+      }
+    }
+
+    loadUnread();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const handleLogout = () => {
     clearToken();
@@ -82,6 +110,18 @@ function Layout({ user, setUser }: LayoutProps) {
                   <line x1="6" y1="20" x2="6" y2="16"/>
                 </svg>
                 Analytics
+              </Link>
+              <Link to="/notifications" className="nav-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+                </svg>
+                Notifications
+                {unreadNotifications > 0 && (
+                  <span className="badge-unread">
+                    {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                  </span>
+                )}
               </Link>
               {user?.role === "admin" && (
                 <Link to="/admin" className="nav-link">
@@ -205,6 +245,7 @@ function Layout({ user, setUser }: LayoutProps) {
           <Route path="/issues/:id" element={<IssueDetailsPage user={user} />} />
           <Route path="/my-issues" element={<MyIssuesPage user={user} />} />
           <Route path="/analytics" element={<AnalyticsPage user={user} />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/auth" element={<AuthPage setUser={setUser} />} />
           <Route path="/guest-report" element={<GuestReportPage />} />
           <Route

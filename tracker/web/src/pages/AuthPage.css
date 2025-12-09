@@ -72,6 +72,16 @@
   opacity: 1;
 }
 
+.session-expired-banner {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-md);
+  background-color: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  color: #92400e;
+  font-size: 0.9rem;
+}
+
 /* Form */
 .auth-form {
   display: flex;

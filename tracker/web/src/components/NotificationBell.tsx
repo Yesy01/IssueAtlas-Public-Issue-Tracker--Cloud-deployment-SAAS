@@ -1,25 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../lib/api';
+import { api, getNotifications } from '../lib/api';
+import type { Notification } from '../lib/api';
 import type { User } from '../types';
 import './NotificationBell.css';
 
 interface NotificationBellProps {
   user: User | null;
-}
-
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  read: boolean;
-  createdAt: string;
-  issue?: {
-    id: string;
-    title: string;
-    status: string;
-  } | null;
 }
 
 export function NotificationBell({ user }: NotificationBellProps) {
@@ -61,8 +48,8 @@ export function NotificationBell({ user }: NotificationBellProps) {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/notifications?limit=10');
-      setNotifications(response.data.notifications);
+      const items = await getNotifications();
+      setNotifications(items.slice(0, 10));
     } catch (error: unknown) {
       console.error('Failed to fetch notifications:', error);
     } finally {
@@ -114,18 +101,25 @@ export function NotificationBell({ user }: NotificationBellProps) {
     return date.toLocaleDateString();
   };
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
-      case 'status_change':
+      case 'STATUS_CHANGE':
         return 'Update';
-      case 'issue_resolved':
-        return 'Resolved';
-      case 'new_comment':
+      case 'COMMENT':
         return 'Comment';
-      case 'issue_upvoted':
-        return 'Upvote';
       default:
         return 'Alert';
+    }
+  };
+
+  const getNotificationTitle = (type: Notification['type']) => {
+    switch (type) {
+      case 'STATUS_CHANGE':
+        return 'Issue Update';
+      case 'COMMENT':
+        return 'New Comment';
+      default:
+        return 'Notification';
     }
   };
 
@@ -178,7 +172,9 @@ export function NotificationBell({ user }: NotificationBellProps) {
                     {getNotificationIcon(notification.type)}
                   </span>
                   <div className="notification-content">
-                    <div className="notification-title">{notification.title}</div>
+                    <div className="notification-title">
+                      {getNotificationTitle(notification.type)}
+                    </div>
                     <div className="notification-message">{notification.message}</div>
                     <div className="notification-meta">
                       <span className="notification-time">

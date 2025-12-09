@@ -65,9 +65,6 @@ if (process.env.NODE_ENV === 'production') {
 }
 app.use(requestLogger);
 
-// Apply general rate limiting to all API routes
-app.use("/api", generalLimiter);
-
 // Health check
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
@@ -86,9 +83,10 @@ app.get('/api/health/db', async (req, res) => {
 
 
 // API routes
-app.use("/api/auth", authLimiter, authRouter);
-app.use("/api/issues", issuesRouter);
+app.use("/api/auth", authLimiter, authRouter); // brute-force protection on auth
 app.use("/api/uploads", uploadLimiter, uploadsRoutes);
+app.use("/api", generalLimiter); // general limiter for everything else
+app.use("/api/issues", issuesRouter);
 app.use("/api/health", healthRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/notifications", notificationsRouter);

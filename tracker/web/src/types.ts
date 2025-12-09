@@ -34,6 +34,13 @@ export interface Issue {
   imageUrl?: string | null;
   address?: string | null;
   areaName?: string | null;
+  officialResponse?: string | null;
+  officialRespondedAt?: string | null;
+  verified?: boolean;
+  verifiedAt?: string | null;
+  verifiedById?: string | null;
+  flagged?: boolean;
+  flaggedReason?: string | null;
   createdAt: string;
   updatedAt: string;
   history?: StatusHistoryEntry[];

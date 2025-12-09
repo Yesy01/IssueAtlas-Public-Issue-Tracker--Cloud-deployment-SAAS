@@ -22,6 +22,8 @@ export function GuestReportPage() {
   const [error, setError] = useState<string | null>(null);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [guestToken, setGuestToken] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const mapRef = useRef<LeafletMap | null>(null);
@@ -87,9 +89,28 @@ export function GuestReportPage() {
     e.preventDefault();
     setError(null);
     setMessage(null);
+    setTitleError(null);
+    setDescriptionError(null);
 
     if (!guestToken) {
       setError("Guest session not initialized. Please refresh the page.");
+      return;
+    }
+
+    let hasError = false;
+
+    if (!title.trim() || title.trim().length < 3) {
+      setTitleError("Title is required and must be at least 3 characters.");
+      hasError = true;
+    }
+
+    if (!description.trim() || description.trim().length < 10) {
+      setDescriptionError("Description is required and must be at least 10 characters.");
+      hasError = true;
+    }
+
+    if (hasError) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -151,6 +172,15 @@ export function GuestReportPage() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: unknown) {
       console.error(err);
+      const details = (err as any)?.response?.data?.details;
+      if (details?.fieldErrors) {
+        if (details.fieldErrors.title?.[0]) {
+          setTitleError(details.fieldErrors.title[0]);
+        }
+        if (details.fieldErrors.description?.[0]) {
+          setDescriptionError(details.fieldErrors.description[0]);
+        }
+      }
       const msg = err instanceof Error && 'response' in err && typeof err.response === 'object' && err.response !== null && 'data' in err.response && typeof err.response.data === 'object' && err.response.data !== null && 'error' in err.response.data
         ? String(err.response.data.error)
         : "Failed to create issue. Please try again.";
@@ -271,6 +301,11 @@ export function GuestReportPage() {
                       required
                       placeholder="Brief description of the issue"
                     />
+                    {titleError && (
+                      <p className="form-error-text">
+                        {titleError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="form-field">
@@ -284,6 +319,11 @@ export function GuestReportPage() {
                       required
                       placeholder="Provide detailed information"
                     />
+                    {descriptionError && (
+                      <p className="form-error-text">
+                        {descriptionError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="form-field">

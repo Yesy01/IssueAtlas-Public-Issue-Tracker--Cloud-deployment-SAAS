@@ -5,11 +5,15 @@ import { uploadIssueFile } from "../lib/azureBlob";
 
 const router = Router();
 
-// store file in memory; 10 MB limit
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+// store file in memory; 5 MB limit
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10 MB
+    fileSize: MAX_FILE_SIZE_BYTES,
   },
 });
 
@@ -20,6 +24,23 @@ router.post(
   async (req: Request, res: Response) => {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded (field: file)" });
+    }
+
+    const { mimetype, size, originalname } = req.file;
+
+    if (size > MAX_FILE_SIZE_BYTES) {
+      return res.status(400).json({ error: "File too large (max 5 MB)" });
+    }
+
+    if (!ALLOWED_MIME_TYPES.includes(mimetype)) {
+      return res.status(400).json({ error: "Invalid file type; only images are allowed" });
+    }
+
+    const ext = originalname.split(".").pop()?.toLowerCase();
+    if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
+      return res.status(400).json({
+        error: "Invalid file extension; allowed extensions: jpg, jpeg, png, webp",
+      });
     }
 
     // Optional: allow client to send issueId in body for nicer path structure
