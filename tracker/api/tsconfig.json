@@ -2,12 +2,12 @@
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // File Layout
-    // "rootDir": "./src",
-    // "outDir": "./dist",
+    "rootDir": "./src",
+    "outDir": "./dist",
 
     "module": "commonjs",
     "moduleResolution": "node",
-    "target": "esnext",
+    "target": "ES2020",
     "types": [],
     "sourceMap": true,
     "declaration": true,
@@ -16,5 +16,6 @@
     "verbatimModuleSyntax": false,
     "esModuleInterop": true,
     "skipLibCheck": true
-  }
+  },
+  "include": ["src"]
 }
