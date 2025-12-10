@@ -18,7 +18,18 @@ export const IssueCreateSchema = z.object({
   lon: z.number().min(-180).max(180),
   address: z.string().max(255).optional(),
   areaName: z.string().max(255).optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z
+    .string()
+    .min(1)
+    .refine(
+      (val) =>
+        val.startsWith("http://") ||
+        val.startsWith("https://") ||
+        val.startsWith("/api/images/"),
+      "Invalid image URL"
+    )
+    .optional()
+    .nullable(),
 });
 
 export const IssueUpdateSchema = z.object({
