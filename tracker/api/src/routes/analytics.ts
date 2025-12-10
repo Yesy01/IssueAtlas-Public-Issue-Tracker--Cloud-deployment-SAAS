@@ -218,18 +218,18 @@ router.get("/top-reporters", async (_req: Request, res: Response, next: NextFunc
     });
 
     // Get user details for top reporters
-    const userIds = topReporters.map((r: { reporterId: number }) => r.reporterId);
+    const userIds = topReporters.map((r) => r.reporterId);
     const users = await prisma.user.findMany({
       where: { id: { in: userIds } },
       select: { id: true, email: true }
     });
 
-    const userMap = users.reduce((acc: Record<number, string>, user: { id: number; email: string }) => {
+    const userMap = users.reduce((acc: Record<string, string>, user) => {
       acc[user.id] = user.email;
       return acc;
-    }, {} as Record<number, string>);
+    }, {} as Record<string, string>);
 
-    const reporters = topReporters.map((r: { reporterId: number; _count: { id: number } }) => ({
+    const reporters = topReporters.map((r) => ({
       userId: r.reporterId,
       email: userMap[r.reporterId] || 'Unknown',
       issueCount: r._count.id

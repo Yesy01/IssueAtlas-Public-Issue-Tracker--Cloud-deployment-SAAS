@@ -50,7 +50,7 @@ router.post("/register", async (req: Request, res: Response) => {
     },
   });
 
-  const token = signAccessToken({ userId: user.id, role: user.role });
+  const token = signAccessToken({ userId: user.id, role: user.role, email: user.email });
 
   return res.status(201).json({
     token,
@@ -95,7 +95,7 @@ router.post("/login", async (req: Request, res: Response) => {
     return res.status(401).json({ error: "Invalid email or password" });
   }
 
-  const token = signAccessToken({ userId: user.id, role: user.role });
+  const token = signAccessToken({ userId: user.id, role: user.role, email: user.email });
 
   return res.status(200).json({
     token,
@@ -149,7 +149,7 @@ router.post("/guest", async (req: Request, res: Response) => {
   const guestId = `guest_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   
   // Sign a token with limited permissions (no real user ID)
-  const token = signAccessToken({ userId: guestId, role: "guest" });
+  const token = signAccessToken({ userId: guestId, role: "user" });
 
   return res.status(200).json({
     token,

@@ -5,6 +5,7 @@ declare global {
     interface AuthenticatedUser {
       id: string;
       role: UserRole;
+      email?: string;
     }
 
     interface Request {

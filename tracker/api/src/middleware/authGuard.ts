@@ -20,7 +20,7 @@ export function authGuard(req: Request, res: Response, next: NextFunction) {
 
   try {
     const payload = verifyAccessToken(token);
-    req.user = { id: payload.userId, role: payload.role };
+    req.user = { id: payload.userId, role: payload.role, email: payload.email };
     return next();
   } catch (err) {
     console.error("[authGuard] Token verification failed:", err);

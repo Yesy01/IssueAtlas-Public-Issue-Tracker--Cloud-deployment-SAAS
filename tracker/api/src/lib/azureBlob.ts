@@ -84,7 +84,6 @@ export async function downloadIssueFile(key: string): Promise<{
 
   return {
     stream,
-    contentType:
-      resp.contentType || resp.details.contentType || "application/octet-stream",
+    contentType: resp.contentType || "application/octet-stream",
   };
 }

@@ -49,9 +49,9 @@ router.post("/", authGuard, async (req: Request, res: Response) => {
   try {
     // For guest users, use a placeholder reporter or null
     // Guest IDs start with "guest_" and aren't in the database
-    const isGuest = req.user.role === "guest" || req.user.id.startsWith("guest_");
+    const isGuest = req.user.id.startsWith("guest_");
     
-    let reporterId: number;
+    let reporterId: string;
     
     if (isGuest) {
       // Find or create a special "guest" user for anonymous submissions
@@ -641,11 +641,12 @@ router.post("/:id/comments", authGuard, async (req: Request, res: Response) => {
 
     // Notify the issue reporter about the new comment
     try {
+      const commenterEmail = comment.user.email || "Unknown user";
       await notifyNewComment(
         issueId,
         issue.reporterId,
         req.user.id,
-        req.user.email,
+        commenterEmail,
         issue.title
       );
     } catch (notifyErr) {

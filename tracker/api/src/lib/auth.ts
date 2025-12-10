@@ -1,26 +1,21 @@
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt, { JwtPayload, SignOptions, Secret } from "jsonwebtoken";
 
 type UserRole = "user" | "admin";
 
 export interface AuthTokenPayload {
   userId: string;
   role: UserRole;
+  email?: string;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-insecure-secret";
-
-if (!process.env.JWT_SECRET) {
-  // Fine for local dev; in prod/VM this MUST be set properly.
-  console.warn(
-    "[auth] JWT_SECRET is not set, falling back to an insecure dev secret."
-  );
-}
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export function signAccessToken(
   payload: AuthTokenPayload,
-  expiresIn: string = "7d"
+  expiresIn: SignOptions["expiresIn"] = "1h"
 ): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  const options: SignOptions = expiresIn ? { expiresIn } : {};
+  return jwt.sign(payload, JWT_SECRET as Secret, options);
 }
 
 export function verifyAccessToken(token: string): AuthTokenPayload {
@@ -43,5 +38,6 @@ export function verifyAccessToken(token: string): AuthTokenPayload {
   return {
     userId: decoded.userId,
     role,
+    email: typeof decoded.email === "string" ? decoded.email : undefined,
   };
 }
