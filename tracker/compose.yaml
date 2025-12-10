@@ -1,6 +1,7 @@
 services:
   api:
-    build: ./api
+    build:
+      context: ./api
     container_name: issues-api
     restart: unless-stopped
     env_file:

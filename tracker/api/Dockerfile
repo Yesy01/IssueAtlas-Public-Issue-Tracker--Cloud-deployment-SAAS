@@ -1,9 +1,9 @@
-# ----- Build stage -----
+# ---------- Build stage ----------
 FROM node:20 AS builder
 
 WORKDIR /app
 
-# Install deps
+# Install dependencies
 COPY package*.json ./
 RUN npm ci
 
@@ -16,17 +16,18 @@ RUN npx prisma generate
 # Build TypeScript -> dist/
 RUN npm run build
 
-# ----- Runtime stage -----
+# ---------- Runtime stage ----------
 FROM node:20-slim AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Copy only what's needed
-COPY --from=builder /app/node_modules ./node_modules
+# Copy only what we need to run
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 8080
 
-CMD ["npm", "run", "start"]
+# Run compiled JS directly
+CMD ["node", "dist/index.js"]
