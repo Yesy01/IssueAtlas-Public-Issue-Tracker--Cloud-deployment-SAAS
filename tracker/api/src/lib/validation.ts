@@ -20,14 +20,7 @@ export const IssueCreateSchema = z.object({
   areaName: z.string().max(255).optional(),
   imageUrl: z
     .string()
-    .min(1)
-    .refine(
-      (val) =>
-        val.startsWith("http://") ||
-        val.startsWith("https://") ||
-        val.startsWith("/api/images/"),
-      "Invalid image URL"
-    )
+    .regex(/^\/api\/images\/.+|https?:\/\//, "Invalid image URL")
     .optional()
     .nullable(),
 });
