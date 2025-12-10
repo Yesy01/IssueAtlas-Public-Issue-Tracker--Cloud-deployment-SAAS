@@ -1,27 +1,20 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { Notification } from "../lib/api";
 import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
-  Notification,
 } from "../lib/api";
-import { useAuth } from "../lib/auth";
 import { formatDistanceToNow } from "date-fns";
 
 export default function NotificationsPage() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
     let cancelled = false;
 
     async function load() {
@@ -46,7 +39,7 @@ export default function NotificationsPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, navigate]);
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
