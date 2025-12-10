@@ -3,11 +3,7 @@ services:
     build: ./api
     container_name: issues-api
     restart: unless-stopped
-    environment:
-      PORT: "8080"
-      DATABASE_URL: "postgresql://dpcsdbadmin:hDTttDYmXtMwvq8G@dpcs-pg.postgres.database.azure.com:5432/issues_db?sslmode=require"
-      JWT_SECRET: "hDTttDYmXtMwvq8G"
-      AZURE_STORAGE_ACCOUNT_NAME: "dpcsstorageacount1"
-      AZURE_STORAGE_CONTAINER: "issues"
+    env_file:
+      - ./api/.env
     ports:
       - "8080:8080"

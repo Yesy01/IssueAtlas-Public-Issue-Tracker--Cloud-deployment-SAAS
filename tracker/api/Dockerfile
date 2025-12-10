@@ -1,4 +1,5 @@
-FROM node:20-alpine
+# ----- Build stage -----
+FROM node:20 AS builder
 
 WORKDIR /app
 
@@ -6,13 +7,26 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Copy Prisma schema and generate client
-COPY prisma ./prisma
+# Copy source
+COPY . .
+
+# Generate Prisma client
 RUN npx prisma generate
 
-# Copy the rest of the source
-COPY . .
+# Build TypeScript -> dist/
+RUN npm run build
+
+# ----- Runtime stage -----
+FROM node:20-slim AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Copy only what's needed
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 8080
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "start"]
