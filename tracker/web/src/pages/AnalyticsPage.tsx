@@ -31,7 +31,7 @@ interface AreaData {
   resolved: number;
 }
 
-export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
+export default function AnalyticsPage({}: AnalyticsPageProps) {
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [trends, setTrends] = useState<TrendData[]>([]);
   const [areas, setAreas] = useState<AreaData[]>([]);
@@ -100,21 +100,28 @@ export default function AnalyticsPage({ user: _user }: AnalyticsPageProps) {
 
     const maxCount = Math.max(...areas.map(a => a.count));
 
-    if (!maxCount) {
-      return;
-    }
+  if (!maxCount) {
+    return;
+  }
 
-    if (heatmapMode) {
-      const heatPoints = areas.map((area) => {
-        const intensity = area.count / maxCount;
-        return [area.lat, area.lng, intensity] as [number, number, number];
-      });
+  if (heatmapMode) {
+    type HeatLayerFactory = (
+      points: [number, number, number][],
+      options?: { radius?: number; blur?: number; maxZoom?: number }
+    ) => L.Layer;
 
-      const heatLayer = (L as any).heatLayer(heatPoints, {
-        radius: 25,
-        blur: 15,
-        maxZoom: 17,
-      });
+    const heatPoints = areas.map((area) => {
+      const intensity = area.count / maxCount;
+      return [area.lat, area.lng, intensity] as [number, number, number];
+    });
+
+    const heatLayerFactory = (L as typeof L & { heatLayer: HeatLayerFactory }).heatLayer;
+
+    const heatLayer = heatLayerFactory(heatPoints, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 17,
+    });
 
       heatLayer.addTo(group);
     } else {

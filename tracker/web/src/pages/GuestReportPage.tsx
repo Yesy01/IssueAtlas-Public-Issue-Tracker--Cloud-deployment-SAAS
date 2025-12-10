@@ -1,6 +1,6 @@
 // src/pages/GuestReportPage.tsx
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import L, { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -172,25 +172,31 @@ export function GuestReportPage() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: unknown) {
       console.error(err);
-      const details = (err as any)?.response?.data?.details;
-      if (details?.fieldErrors) {
-        if (details.fieldErrors.title?.[0]) {
-          setTitleError(details.fieldErrors.title[0]);
+      const axiosData =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: { data?: unknown } }).response?.data === "object"
+          ? (err as { response?: { data?: { error?: string; details?: { fieldErrors?: { title?: string[]; description?: string[] } } } } }).response?.data
+          : undefined;
+
+      const fieldErrors = axiosData?.details?.fieldErrors;
+      if (fieldErrors) {
+        if (fieldErrors.title?.[0]) {
+          setTitleError(fieldErrors.title[0]);
         }
-        if (details.fieldErrors.description?.[0]) {
-          setDescriptionError(details.fieldErrors.description[0]);
+        if (fieldErrors.description?.[0]) {
+          setDescriptionError(fieldErrors.description[0]);
         }
       }
-      const msg = err instanceof Error && 'response' in err && typeof err.response === 'object' && err.response !== null && 'data' in err.response && typeof err.response.data === 'object' && err.response.data !== null && 'error' in err.response.data
-        ? String(err.response.data.error)
-        : "Failed to create issue. Please try again.";
+      const msg = axiosData?.error ?? "Failed to create issue. Please try again.";
       setError(msg);
     } finally {
       setSubmitting(false);
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       if (selectedFile.size > 5 * 1024 * 1024) {

@@ -24,9 +24,16 @@ export default function NotificationsPage() {
         if (!cancelled) {
           setNotifications(data);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelled) {
-          setError(err.response?.data?.error || "Failed to load notifications");
+          const message =
+            typeof err === "object" &&
+            err !== null &&
+            "response" in err &&
+            typeof (err as { response?: { data?: { error?: string } } }).response?.data?.error === "string"
+              ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+              : "Failed to load notifications";
+          setError(message ?? "Failed to load notifications");
         }
       } finally {
         if (!cancelled) {

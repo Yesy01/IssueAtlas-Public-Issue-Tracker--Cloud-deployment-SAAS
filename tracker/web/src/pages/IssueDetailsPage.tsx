@@ -279,10 +279,15 @@ export function IssueDetailsPage({ user }: IssueDetailsPageProps) {
                     setSavingOfficialResponse(true);
                     const updated = await setOfficialResponse(issue.id, officialResponseDraft.trim());
                     setIssue(updated);
-                  } catch (err: any) {
-                    setOfficialResponseError(
-                      err?.response?.data?.error || "Failed to save response."
-                    );
+                  } catch (err: unknown) {
+                    const message =
+                      typeof err === "object" &&
+                      err !== null &&
+                      "response" in err &&
+                      typeof (err as { response?: { data?: { error?: string } } }).response?.data?.error === "string"
+                        ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+                        : undefined;
+                    setOfficialResponseError(message ?? "Failed to save response.");
                   } finally {
                     setSavingOfficialResponse(false);
                   }
@@ -319,8 +324,15 @@ export function IssueDetailsPage({ user }: IssueDetailsPageProps) {
                   const updated = await flagIssue(issue.id, flagReason.trim());
                   setIssue(updated);
                   setFlaggedMessage("Thank you. This issue has been flagged for admin review.");
-                } catch (err: any) {
-                  setFlagError(err?.response?.data?.error || "Failed to flag issue. Please try again.");
+                } catch (err: unknown) {
+                  const message =
+                    typeof err === "object" &&
+                    err !== null &&
+                    "response" in err &&
+                    typeof (err as { response?: { data?: { error?: string } } }).response?.data?.error === "string"
+                      ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+                      : undefined;
+                  setFlagError(message ?? "Failed to flag issue. Please try again.");
                 } finally {
                   setFlagging(false);
                 }

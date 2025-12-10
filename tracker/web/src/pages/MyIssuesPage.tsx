@@ -22,6 +22,7 @@ export default function MyIssuesPage({ user }: MyIssuesPageProps) {
       return;
     }
     fetchMyIssues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
 
   const fetchMyIssues = async () => {

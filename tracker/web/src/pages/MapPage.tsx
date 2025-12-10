@@ -13,7 +13,7 @@ interface MapPageProps {
   user: User | null;
 }
 
-export function MapPage({ user: _user }: MapPageProps) {
+export function MapPage({}: MapPageProps) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [status, setStatus] = useState<IssueStatus | "">("");
   const [type, setType] = useState<IssueType | "">("");
@@ -173,15 +173,20 @@ export function MapPage({ user: _user }: MapPageProps) {
           const nearby = await getNearbyIssues(latitude, longitude, radius);
           setIssues(nearby);
           setMode("nearby");
-        } catch (err: any) {
-          setNearbyError(
-            err?.response?.data?.error || "Failed to load nearby issues."
-          );
+        } catch (err: unknown) {
+          const message =
+            typeof err === "object" &&
+            err !== null &&
+            "response" in err &&
+            typeof (err as { response?: { data?: { error?: string } } }).response?.data?.error === "string"
+              ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+              : "Failed to load nearby issues.";
+          setNearbyError(message ?? "Failed to load nearby issues.");
         } finally {
           setLoadingNearby(false);
         }
       },
-      (err) => {
+      (err: GeolocationPositionError) => {
         setNearbyError(err.message || "Failed to get your location.");
         setLoadingNearby(false);
       }

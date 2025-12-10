@@ -10,7 +10,7 @@ interface AdminPageProps {
   user: User;
 }
 
-export function AdminPage({ user: _user }: AdminPageProps) {
+export function AdminPage({}: AdminPageProps) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +33,7 @@ export function AdminPage({ user: _user }: AdminPageProps) {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   async function changeStatus(id: string, newStatus: IssueStatus) {

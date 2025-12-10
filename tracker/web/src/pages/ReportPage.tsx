@@ -1,6 +1,6 @@
 // src/pages/ReportPage.tsx
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import L, { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../lib/api";
@@ -184,17 +184,26 @@ export function ReportPage({ user }: ReportPageProps) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: unknown) {
       console.error(err);
-      const details = (err as any)?.response?.data?.details;
-      if (details?.fieldErrors) {
-        if (details.fieldErrors.title?.[0]) {
-          setTitleError(details.fieldErrors.title[0]);
+      const axiosData =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: { data?: unknown } }).response?.data === "object"
+          ? (err as { response?: { data?: { error?: string; details?: { fieldErrors?: { title?: string[]; description?: string[] } } } } }).response?.data
+          : undefined;
+
+      const fieldErrors = axiosData?.details?.fieldErrors;
+      if (fieldErrors) {
+        if (fieldErrors.title?.[0]) {
+          setTitleError(fieldErrors.title[0]);
         }
-        if (details.fieldErrors.description?.[0]) {
-          setDescriptionError(details.fieldErrors.description[0]);
+        if (fieldErrors.description?.[0]) {
+          setDescriptionError(fieldErrors.description[0]);
         }
       }
+
       const msg =
-        (err as any)?.response?.data?.error ||
+        axiosData?.error ??
         (err instanceof Error ? err.message : "Failed to create issue. Please try again.");
       setError(msg);
     } finally {
@@ -202,7 +211,7 @@ export function ReportPage({ user }: ReportPageProps) {
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       // Validate file size (max 5MB)
