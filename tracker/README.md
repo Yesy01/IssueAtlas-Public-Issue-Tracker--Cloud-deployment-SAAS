@@ -33,6 +33,8 @@ IssueAtlas is a map-based web app for reporting and tracking public infrastructu
 git clone https://github.com/DPCS3810/project-2-runtime_terrors.git
 cd project-2-runtime_terrors/tracker 
 ```
+## Product
+Refer to the docs folder to see live demo, report and images of the final product.
 
 ## License
 

@@ -34,6 +34,9 @@ git clone https://github.com/DPCS3810/project-2-runtime_terrors.git
 cd project-2-runtime_terrors/tracker 
 ```
 
+## Product
+Refer to the docs folder to see live demo, report and images of the final product.
+
 ## License
 
 Coursework project. Not licensed for production use without review and hardening.
